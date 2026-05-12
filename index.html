@@ -573,7 +573,7 @@ function renderDash(){
   const ing30=enRango.filter(m=>m.tipo==='ingreso').reduce((s,m)=>s+Number(m.monto),0);
   const gas30=enRango.filter(m=>m.tipo==='gasto').reduce((s,m)=>s+Number(m.monto),0);
   const net30=ing30-gas30;
-  const activas=DEUDAS.filter(d=>!d.pagado&&d.monto_pagado<d.monto_total);
+  const activas=DEUDAS.filter(d=>!d.pagado&&d.monto_pagado<d.monto_total&&d.fecha_vencimiento&&d.fecha_vencimiento>=desde&&d.fecha_vencimiento<=hasta);
   const total_deu=activas.reduce((s,d)=>s+(d.monto_total-d.monto_pagado),0);
   document.getElementById('stat-ing').textContent=fmtS(ing30);
   document.getElementById('stat-gas').textContent=fmtS(gas30);
