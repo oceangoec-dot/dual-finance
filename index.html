@@ -574,6 +574,7 @@ function renderDash(){
   const gas30=enRango.filter(m=>m.tipo==='gasto').reduce((s,m)=>s+Number(m.monto),0);
   const net30=ing30-gas30;
   const activas=DEUDAS.filter(d=>!d.pagado&&d.monto_pagado<d.monto_total&&d.fecha_vencimiento&&d.fecha_vencimiento>=desde&&d.fecha_vencimiento<=hasta);
+  const activasFuturas=DEUDAS.filter(d=>!d.pagado&&d.monto_pagado<d.monto_total&&d.fecha_vencimiento&&d.fecha_vencimiento>HOY);
   const total_deu=activas.reduce((s,d)=>s+(d.monto_total-d.monto_pagado),0);
   document.getElementById('stat-ing').textContent=fmtS(ing30);
   document.getElementById('stat-gas').textContent=fmtS(gas30);
@@ -616,9 +617,96 @@ function renderChart(){
 }
 /* ── ALERTAS DASHBOARD CON CLICK PARA ABONAR ── */
 function renderAlertas(){
-  const hoy=new Date();const activas=DEUDAS.filter(d=>!d.pagado&&d.monto_pagado<d.monto_total);
-  if(!activas.length){document.getElementById('dash-alertas').innerHTML='<div class="empty" style="padding:16px 0">Sin alertas pendientes</div>';return}
-  document.getElementById('dash-alertas').innerHTML=activas.map(d=>{const pend=d.monto_total-d.monto_pagado;const venc=d.fecha_vencimiento?new Date(d.fecha_vencimiento+'T12:00:00'):null;const dias=venc?Math.ceil((venc-hoy)/864e5):999;const type=dias<=3?'danger':dias<=7?'warn':'ok';const bdg=dias<=0?'Vencida':dias<=3?'Urgente':dias<=7?'Esta semana':'Pendiente';const vs=venc?venc.toLocaleDateString('es',{day:'numeric',month:'short'}):'Sin fecha';const etColor=COLOR_ETIQ_DEUDA[d.etiqueta]||'#888880';return`<div class="alert-card ${type}" onclick="abrirPago('${d.id}',null)"><div class="ac-bar ${type}"></div><div class="ac-info"><div class="ac-name">${d.nombre}</div><div class="ac-sub">Vence: ${vs} · <span style="color:${etColor};font-weight:700">${d.etiqueta||'Sin etiqueta'}</span></div><span class="ac-pay-hint">💳 Toca para abonar</span></div><div class="ac-right"><div class="ac-amt">−$${fmt(pend)}</div><div class="ac-badge badge-${type}">${bdg}</div></div></div>`}).join('')
+  const hoy=new Date();
+  const{desde,hasta}=getDashRango();
+  const todasActivas=DEUDAS.filter(d=>!d.pagado&&d.monto_pagado<d.monto_total);
+
+  // Filtro etiqueta activo
+  const etiqActiva=window._dashEtiqFiltro||'todas';
+
+  // Cards: deudas en rango + deudas futuras como cronograma
+  const enRango=DEUDAS.filter(d=>d.fecha_vencimiento&&d.fecha_vencimiento>=desde&&d.fecha_vencimiento<=hasta&&!d.pagado&&d.monto_pagado<d.monto_total);
+  const futuras=DEUDAS.filter(d=>d.fecha_vencimiento&&d.fecha_vencimiento>hasta&&!d.pagado&&d.monto_pagado<d.monto_total);
+  const saldadas=DEUDAS.filter(d=>(d.pagado||d.monto_pagado>=d.monto_total)&&d.fecha_vencimiento&&d.fecha_vencimiento>=desde&&d.fecha_vencimiento<=hasta);
+
+  // Etiquetas únicas para filtro
+  const etiquetas=[...new Set(DEUDAS.map(d=>d.etiqueta).filter(Boolean))];
+  const cont=document.getElementById('dash-alertas');
+
+  // Filtro chips
+  let chipsHtml=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+    <button onclick="setDashEtiq('todas')" style="font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;border:1.5px solid ${etiqActiva==='todas'?'var(--text)':'var(--border2)'};background:${etiqActiva==='todas'?'var(--text)':'transparent'};color:${etiqActiva==='todas'?'#fff':'var(--text2)'};cursor:pointer;font-family:inherit">Todas</button>`;
+  etiquetas.forEach(e=>{const col=COLOR_ETIQ_DEUDA[e]||'#888880';const sel=etiqActiva===e;chipsHtml+=`<button onclick="setDashEtiq('${e}')" style="font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;border:1.5px solid ${sel?col:'var(--border2)'};background:${sel?col:'transparent'};color:${sel?'#fff':col};cursor:pointer;font-family:inherit">${e}</button>`});
+  chipsHtml+='</div>';
+
+  function filtrarPorEtiq(arr){return etiqActiva==='todas'?arr:arr.filter(d=>d.etiqueta===etiqActiva)}
+
+  function buildCard(d,modo){
+    const pend=d.monto_total-d.monto_pagado;
+    const pct=Math.min(100,Math.round((d.monto_pagado/d.monto_total)*100));
+    const venc=d.fecha_vencimiento?new Date(d.fecha_vencimiento+'T12:00:00'):null;
+    const dias=venc?Math.ceil((venc-hoy)/864e5):999;
+    const etColor=COLOR_ETIQ_DEUDA[d.etiqueta]||'#888880';
+    const vs=venc?venc.toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'}):'Sin fecha';
+
+    let badgeBg,badgeColor,badgeTxt;
+    if(modo==='saldada'){badgeBg='var(--green-bg)';badgeColor='var(--green-text)';badgeTxt='✓ Saldada'}
+    else if(modo==='futura'){badgeBg='var(--blue-bg)';badgeColor='var(--blue-text)';badgeTxt='📅 Programada'}
+    else if(dias<0){badgeBg='var(--red-bg)';badgeColor='var(--red-text)';badgeTxt='⚠ Vencida'}
+    else if(dias<=3){badgeBg='var(--red-bg)';badgeColor='var(--red-text)';badgeTxt='🔴 Urgente'}
+    else if(dias<=7){badgeBg='var(--amber-bg)';badgeColor='var(--amber-text)';badgeTxt='🟡 Esta semana'}
+    else{badgeBg='var(--bg2)';badgeColor='var(--text2)';badgeTxt='Pendiente'}
+
+    const borderColor=modo==='saldada'?'rgba(59,109,17,.2)':modo==='futura'?'rgba(24,95,165,.2)':dias<=3?'rgba(163,45,45,.25)':dias<=7?'rgba(146,94,8,.2)':'var(--border)';
+
+    return`<div style="border-radius:12px;border:1.5px solid ${borderColor};background:var(--bg);overflow:hidden;cursor:pointer" onclick="abrirPago('${d.id}',null)">
+      <div style="padding:13px 14px 10px;display:flex;gap:11px;align-items:flex-start">
+        <div style="width:10px;height:10px;border-radius:50%;background:${etColor};flex-shrink:0;margin-top:4px"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.nombre}</div>
+          <div style="font-size:12px;font-weight:600;color:${etColor};margin-bottom:6px">${d.etiqueta||'Sin etiqueta'} · Vence: ${vs}</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:${modo==='saldada'?'var(--green)':'var(--red)'}">${modo==='saldada'?'$'+fmt(d.monto_total):'−$'+fmt(pend)}</span>
+            <span style="font-size:11px;font-weight:500;color:var(--text3)">de $${fmt(d.monto_total)}</span>
+            <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:${badgeBg};color:${badgeColor};border:1px solid ${borderColor}">${badgeTxt}</span>
+          </div>
+        </div>
+      </div>
+      ${modo!=='saldada'&&pct>0?`<div style="height:3px;background:var(--border);border-radius:0"><div style="height:3px;background:${pct>=100?'var(--green)':'var(--red)'};width:${pct}%;border-radius:0;transition:width .3s"></div></div>`:''}
+      ${modo!=='saldada'?`<div style="padding:8px 14px;border-top:1px solid var(--border);background:var(--bg2);font-size:12px;font-weight:700;color:var(--green-text)">💳 Toca para abonar</div>`:''}
+    </div>`
+  }
+
+  const enRangoF=filtrarPorEtiq(enRango);
+  const futurasF=filtrarPorEtiq(futuras);
+  const saldadasF=filtrarPorEtiq(saldadas);
+
+  let html=chipsHtml;
+
+  if(!enRangoF.length&&!futurasF.length&&!saldadasF.length){
+    html+='<div class="empty" style="padding:16px 0">Sin deudas para este rango</div>';
+    cont.innerHTML=html;return
+  }
+
+  if(enRangoF.length){
+    html+=`<div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;padding-left:2px">En este rango</div>`;
+    html+=`<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">${enRangoF.map(d=>buildCard(d,'rango')).join('')}</div>`;
+  }
+  if(futurasF.length){
+    html+=`<div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--blue-text);margin-bottom:8px;padding-left:2px">📅 Cronograma futuro</div>`;
+    html+=`<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">${futurasF.map(d=>buildCard(d,'futura')).join('')}</div>`;
+  }
+  if(saldadasF.length){
+    html+=`<div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--green-text);margin-bottom:8px;padding-left:2px">✓ Saldadas en este rango</div>`;
+    html+=`<div style="display:flex;flex-direction:column;gap:8px">${saldadasF.map(d=>buildCard(d,'saldada')).join('')}</div>`;
+  }
+
+  cont.innerHTML=html
+}
+
+function setDashEtiq(etiq){
+  window._dashEtiqFiltro=etiq;
+  renderAlertas()
 }
 
 function setSubtab(tab,btn){document.querySelectorAll('.subtab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.subtab-content').forEach(c=>c.classList.remove('active'));btn.classList.add('active');document.getElementById('sub-'+tab).classList.add('active')}
