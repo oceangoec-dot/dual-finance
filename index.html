@@ -284,6 +284,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg2);color:var(--text);mi
       <div id="decision-strip"></div>
       <div>
         <div class="section-title">Flujo 14 días</div>
+  <div id="dash-daterange" style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+    <input type="date" class="di" id="dash-desde" style="flex:1;border:1.5px solid var(--border2);border-radius:10px;padding:7px 10px;font-size:13px;font-weight:500;background:var(--bg);font-family:inherit" onchange="actualizarDashFechas()"/>
+    <span style="font-size:13px;font-weight:600;color:var(--text3)">→</span>
+    <input type="date" class="di" id="dash-hasta" style="flex:1;border:1.5px solid var(--border2);border-radius:10px;padding:7px 10px;font-size:13px;font-weight:500;background:var(--bg);font-family:inherit" onchange="actualizarDashFechas()"/>
+    <button onclick="resetDashFechas()" style="font-size:12px;font-weight:700;padding:7px 11px;border-radius:20px;border:1.5px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;font-family:inherit;white-space:nowrap">30d</button>
+  </div>
         <div class="chart-card">
           <div class="chart-leg">
             <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>Ingresos</div>
@@ -547,13 +553,25 @@ function cargarDemo(){
 }
 function renderTodo(){renderDash();renderBancoFilterChips();renderEtiquetaFilterChips();applyFilters();renderDeudas();renderBankBtns();renderTrfBanks();renderBankCfg();renderEtiquetaPills()}
 
+function getDashRango(){
+  const desde=document.getElementById('dash-desde')?.value||H30;
+  const hasta=document.getElementById('dash-hasta')?.value||HOY;
+  return{desde,hasta}
+}
+function resetDashFechas(){
+  document.getElementById('dash-desde').value=H30;
+  document.getElementById('dash-hasta').value=HOY;
+  renderDash()
+}
+function actualizarDashFechas(){renderDash()}
 function renderDash(){
+  const{desde,hasta}=getDashRango();
   const sr=saldosReales();const total=sr.reduce((s,b)=>s+b.saldo_real,0);
   document.getElementById('total-liq').textContent='$'+fmt(total);
   document.getElementById('banks-list').innerHTML=sr.length?sr.map(b=>`<div class="bank-item"><div class="b-dot" style="background:${b.color}"></div><span class="b-name">${b.nombre}</span><span class="b-amt">${b.saldo_real<0?'−':''}$${fmt(Math.abs(b.saldo_real))}</span></div>`).join(''):'<div style="color:rgba(255,255,255,.4);font-size:13px">Sin bancos</div>';
-  const recent30=MOVS.filter(m=>m.fecha>=H30&&!m.deuda_id);
-  const ing30=recent30.filter(m=>m.tipo==='ingreso').reduce((s,m)=>s+Number(m.monto),0);
-  const gas30=recent30.filter(m=>m.tipo==='gasto').reduce((s,m)=>s+Number(m.monto),0);
+  const enRango=MOVS.filter(m=>m.fecha>=desde&&m.fecha<=hasta&&!m.deuda_id);
+  const ing30=enRango.filter(m=>m.tipo==='ingreso').reduce((s,m)=>s+Number(m.monto),0);
+  const gas30=enRango.filter(m=>m.tipo==='gasto').reduce((s,m)=>s+Number(m.monto),0);
   const net30=ing30-gas30;
   const activas=DEUDAS.filter(d=>!d.pagado&&d.monto_pagado<d.monto_total);
   const total_deu=activas.reduce((s,d)=>s+(d.monto_total-d.monto_pagado),0);
@@ -568,24 +586,34 @@ function renderDash(){
   const ratio=ing30>0?(gas30/ing30)*100:0;
   const v3=activas.filter(d=>{if(!d.fecha_vencimiento)return false;return Math.ceil((new Date(d.fecha_vencimiento+'T12:00:00')-hoy)/864e5)<=3});
   const v7=activas.filter(d=>{if(!d.fecha_vencimiento)return false;return Math.ceil((new Date(d.fecha_vencimiento+'T12:00:00')-hoy)/864e5)<=7});
-  if(v3.length){dtype='danger';dtitle='Pago urgente pendiente';dbody=`${v3.length} deuda${v3.length>1?'s':''} vence en menos de 3 días. Paga antes de que se incumpla.`}
-  else if(minB<0){dtype='danger';dtitle='Cuenta en negativo';dbody='Una o más cuentas tienen saldo negativo. Transfiere fondos para evitar rechazos.'}
-  else if(ratio>85){dtype='danger';dtitle='Gastos muy altos';dbody=`Los gastos son el ${Math.round(ratio)}% de los ingresos. Revisa y reduce gastos no esenciales.`}
-  else if(v7.length){dtype='warn';dtitle='Deudas próximas a vencer';dbody=`${v7.length} deuda${v7.length>1?'s':''} vence esta semana. Revisa la sección de deudas.`}
-  else if(ratio>65){dtype='warn';dtitle='Gasto elevado';dbody=`Estás gastando el ${Math.round(ratio)}% de tus ingresos. Considera reducir gastos opcionales.`}
-  else if(net30>0){dtype='ok';dtitle='Flujo positivo';dbody=`Ingresos superan gastos por $${fmt(net30)} en 30 días. Considera ahorrar o invertir el excedente.`}
-  else{dtype='ok';dtitle='Todo en orden';dbody='Sin alertas críticas. Mantén el registro actualizado para mejores análisis.'}
+  if(v3.length){dtype='danger';dtitle='Pago urgente pendiente';dbody=`${v3.length} deuda${v3.length>1?'s':''} vence en menos de 3 días.`}
+  else if(minB<0){dtype='danger';dtitle='Cuenta en negativo';dbody='Una o más cuentas tienen saldo negativo.'}
+  else if(ratio>85){dtype='danger';dtitle='Gastos muy altos';dbody=`Los gastos son el ${Math.round(ratio)}% de los ingresos.`}
+  else if(v7.length){dtype='warn';dtitle='Deudas próximas a vencer';dbody=`${v7.length} deuda${v7.length>1?'s':''} vence esta semana.`}
+  else if(ratio>65){dtype='warn';dtitle='Gasto elevado';dbody=`Estás gastando el ${Math.round(ratio)}% de tus ingresos.`}
+  else if(net30>0){dtype='ok';dtitle='Flujo positivo';dbody=`Ingresos superan gastos por $${fmt(net30)} en el periodo.`}
+  else{dtype='ok';dtitle='Todo en orden';dbody='Sin alertas críticas en el rango seleccionado.'}
   const ico={ok:'✓',warn:'⚠',danger:'!'}[dtype];
   document.getElementById('decision-strip').innerHTML=`<div class="decision-strip ${dtype}"><div class="dec-ico">${ico}</div><div class="dec-txt"><div class="dec-title">${dtitle}</div><div class="dec-body">${dbody}</div></div></div>`;
   renderChart();renderAlertas()
 }
 function renderChart(){
-  const ctx=document.getElementById('flowChart').getContext('2d');const labels=[],ing=[],gas=[];const hoy=new Date();
-  for(let i=13;i>=0;i--){const d=new Date(hoy);d.setDate(d.getDate()-i);const ds=d.toISOString().split('T')[0];labels.push(d.getDate()===1?d.toLocaleString('es',{month:'short'}):String(d.getDate()));const dm=MOVS.filter(m=>m.fecha===ds&&!m.deuda_id);ing.push(dm.filter(m=>m.tipo==='ingreso').reduce((s,m)=>s+Number(m.monto),0));gas.push(dm.filter(m=>m.tipo==='gasto').reduce((s,m)=>s+Number(m.monto),0))}
+  const{desde,hasta}=getDashRango();
+  const ctx=document.getElementById('flowChart').getContext('2d');
+  const labels=[],ing=[],gas=[];
+  const d1=new Date(desde+'T12:00:00');
+  const d2=new Date(hasta+'T12:00:00');
+  const diffDias=Math.round((d2-d1)/864e5)+1;
+  const maxPuntos=14;
+  if(diffDias<=maxPuntos){
+    for(let i=0;i<diffDias;i++){const d=new Date(d1);d.setDate(d.getDate()+i);const ds=d.toISOString().split('T')[0];labels.push(d.getDate()===1?d.toLocaleString('es',{month:'short'}):String(d.getDate()));const dm=MOVS.filter(m=>m.fecha===ds&&!m.deuda_id);ing.push(dm.filter(m=>m.tipo==='ingreso').reduce((s,m)=>s+Number(m.monto),0));gas.push(dm.filter(m=>m.tipo==='gasto').reduce((s,m)=>s+Number(m.monto),0))}
+  } else {
+    const paso=Math.ceil(diffDias/maxPuntos);
+    for(let i=0;i<diffDias;i+=paso){const d=new Date(d1);d.setDate(d.getDate()+i);const ds=d.toISOString().split('T')[0];const dsF=new Date(d);dsF.setDate(dsF.getDate()+paso-1);const dsF2=dsF.toISOString().split('T')[0]>hasta?hasta:dsF.toISOString().split('T')[0];labels.push(d.getDate()+'/'+String(d.getMonth()+1));const dm=MOVS.filter(m=>m.fecha>=ds&&m.fecha<=dsF2&&!m.deuda_id);ing.push(dm.filter(m=>m.tipo==='ingreso').reduce((s,m)=>s+Number(m.monto),0));gas.push(dm.filter(m=>m.tipo==='gasto').reduce((s,m)=>s+Number(m.monto),0))}
+  }
   if(window._ch)window._ch.destroy();
   window._ch=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Ingresos',data:ing,borderColor:'#3B6D11',backgroundColor:'rgba(59,109,17,0.1)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#3B6D11',tension:.35,fill:true},{label:'Gastos',data:gas,borderColor:'#A32D2D',backgroundColor:'rgba(163,45,45,0.07)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#A32D2D',tension:.35,fill:true}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' $'+Math.round(c.raw).toLocaleString('es')}}},scales:{x:{grid:{display:false},ticks:{font:{size:11,weight:'600'},color:'#888880'}},y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:11,family:'DM Mono',weight:'500'},color:'#888880',callback:v=>v>=1000?'$'+Math.round(v/1000)+'k':'$'+Math.round(v)}}}}})
 }
-
 /* ── ALERTAS DASHBOARD CON CLICK PARA ABONAR ── */
 function renderAlertas(){
   const hoy=new Date();const activas=DEUDAS.filter(d=>!d.pagado&&d.monto_pagado<d.monto_total);
@@ -744,6 +772,8 @@ function setTipo(t){curTipo=t;document.querySelectorAll('.rtbtn').forEach(b=>b.c
 
 ['modal-pago','modal-historial'].forEach(id=>{document.getElementById(id).addEventListener('click',function(e){if(e.target===this)cerrarModal(id)})});
 
+document.getElementById('dash-desde').value=H30;
+document.getElementById('dash-hasta').value=HOY;  
 document.getElementById('f-desde').value=H30;
 document.getElementById('f-hasta').value=HOY;
 document.getElementById('inp-fecha').value=HOY;
