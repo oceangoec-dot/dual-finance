@@ -566,27 +566,38 @@ function resetDashFechas(){
 function actualizarDashFechas(){renderDash()}
 function renderDash(){
   const{desde,hasta}=getDashRango();
-  const sr=saldosReales();const total=sr.reduce((s,b)=>s+b.saldo_real,0);
+  const sr=saldosReales();
+  const total=sr.reduce((s,b)=>s+b.saldo_real,0);
   document.getElementById('total-liq').textContent='$'+fmt(total);
   document.getElementById('banks-list').innerHTML=sr.length?sr.map(b=>`<div class="bank-item"><div class="b-dot" style="background:${b.color}"></div><span class="b-name">${b.nombre}</span><span class="b-amt">${b.saldo_real<0?'−':''}$${fmt(Math.abs(b.saldo_real))}</span></div>`).join(''):'<div style="color:rgba(255,255,255,.4);font-size:13px">Sin bancos</div>';
+
   const enRango=MOVS.filter(m=>m.fecha>=desde&&m.fecha<=hasta&&!m.deuda_id);
   const ing30=enRango.filter(m=>m.tipo==='ingreso').reduce((s,m)=>s+Number(m.monto),0);
   const gas30=enRango.filter(m=>m.tipo==='gasto').reduce((s,m)=>s+Number(m.monto),0);
   const net30=ing30-gas30;
+
   const activas=DEUDAS.filter(d=>!d.pagado&&d.monto_pagado<d.monto_total&&d.fecha_vencimiento&&d.fecha_vencimiento>=desde&&d.fecha_vencimiento<=hasta);
   const activasFuturas=DEUDAS.filter(d=>!d.pagado&&d.monto_pagado<d.monto_total&&d.fecha_vencimiento&&d.fecha_vencimiento>HOY);
   const total_deu=activas.reduce((s,d)=>s+(d.monto_total-d.monto_pagado),0);
+
+  const labelRango=desde===H30&&hasta===HOY?'últimos 30d':`${new Date(desde+'T12:00:00').toLocaleDateString('es',{day:'numeric',month:'short'})} – ${new Date(hasta+'T12:00:00').toLocaleDateString('es',{day:'numeric',month:'short'})}`;
+
   document.getElementById('stat-ing').textContent=fmtS(ing30);
+  document.getElementById('stat-ing-sub').textContent=labelRango;
   document.getElementById('stat-gas').textContent=fmtS(gas30);
+  document.getElementById('stat-gas-sub').textContent=labelRango;
   document.getElementById('stat-deu').textContent=fmtS(total_deu);
-  document.getElementById('stat-deu-sub').textContent=activas.length+' activa'+(activas.length!==1?'s':'');
-  document.getElementById('stat-net').textContent=(net30<0?'−':'')+fmtS(net30);
-  document.getElementById('stat-net-sub').textContent=net30>=0?'flujo positivo':'flujo negativo';
-  const hoy=new Date();let dtype='ok',dtitle='Finanzas estables',dbody='';
+  document.getElementById('stat-deu-sub').textContent=activas.length+' en rango · '+activasFuturas.length+' próximas';
+  document.getElementById('stat-net').textContent=(net30<0?'−':'')+fmtS(Math.abs(net30));
+  document.getElementById('stat-net-sub').textContent=(net30>=0?'positivo':'negativo')+' · '+labelRango;
+
+  const hoy=new Date();
+  let dtype='ok',dtitle='Finanzas estables',dbody='';
   const minB=sr.length?Math.min(...sr.map(b=>b.saldo_real)):0;
   const ratio=ing30>0?(gas30/ing30)*100:0;
-  const v3=activas.filter(d=>{if(!d.fecha_vencimiento)return false;return Math.ceil((new Date(d.fecha_vencimiento+'T12:00:00')-hoy)/864e5)<=3});
-  const v7=activas.filter(d=>{if(!d.fecha_vencimiento)return false;return Math.ceil((new Date(d.fecha_vencimiento+'T12:00:00')-hoy)/864e5)<=7});
+  const v3=activas.filter(d=>d.fecha_vencimiento&&Math.ceil((new Date(d.fecha_vencimiento+'T12:00:00')-hoy)/864e5)<=3);
+  const v7=activas.filter(d=>d.fecha_vencimiento&&Math.ceil((new Date(d.fecha_vencimiento+'T12:00:00')-hoy)/864e5)<=7);
+
   if(v3.length){dtype='danger';dtitle='Pago urgente pendiente';dbody=`${v3.length} deuda${v3.length>1?'s':''} vence en menos de 3 días.`}
   else if(minB<0){dtype='danger';dtitle='Cuenta en negativo';dbody='Una o más cuentas tienen saldo negativo.'}
   else if(ratio>85){dtype='danger';dtitle='Gastos muy altos';dbody=`Los gastos son el ${Math.round(ratio)}% de los ingresos.`}
@@ -594,9 +605,10 @@ function renderDash(){
   else if(ratio>65){dtype='warn';dtitle='Gasto elevado';dbody=`Estás gastando el ${Math.round(ratio)}% de tus ingresos.`}
   else if(net30>0){dtype='ok';dtitle='Flujo positivo';dbody=`Ingresos superan gastos por $${fmt(net30)} en el periodo.`}
   else{dtype='ok';dtitle='Todo en orden';dbody='Sin alertas críticas en el rango seleccionado.'}
+
   const ico={ok:'✓',warn:'⚠',danger:'!'}[dtype];
   document.getElementById('decision-strip').innerHTML=`<div class="decision-strip ${dtype}"><div class="dec-ico">${ico}</div><div class="dec-txt"><div class="dec-title">${dtitle}</div><div class="dec-body">${dbody}</div></div></div>`;
-  renderChart();renderAlertas()
+  renderChart();renderAlertas();
 }
 function renderChart(){
   const{desde,hasta}=getDashRango();
