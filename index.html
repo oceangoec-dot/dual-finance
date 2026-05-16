@@ -26,6 +26,7 @@
   --amber:#925E08;--amber-bg:#FAE6BC;--amber-text:#5A3A04;
   --blue:#185FA5;--blue-bg:#D0E6F8;--blue-text:#0C3D6B;
   --purple:#4C3FAA;--purple-bg:#DDD9F8;--purple-text:#30257A;
+  --teal:#0E6B6B;--teal-bg:#C8EEEE;--teal-text:#084040;
   --r:12px;--r-lg:18px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -95,7 +96,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg2);color:var(--text);mi
 .leg-dot{width:8px;height:8px;border-radius:50%}
 .section-title{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;padding-left:2px}
 .alert-list{display:flex;flex-direction:column;gap:6px}
-/* ALERT CARD CLICKEABLE EN DASHBOARD */
 .alert-card{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r);background:var(--bg);border:1.5px solid var(--border);cursor:pointer;transition:opacity .15s}
 .alert-card:active{opacity:.75}
 .alert-card.danger{border-color:rgba(163,45,45,.3);background:var(--red-bg)}
@@ -132,7 +132,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg2);color:var(--text);mi
 .filters-toggle-ico.open{transform:rotate(180deg)}
 .filters-active-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--blue-bg);color:var(--blue-text);border:1px solid rgba(24,95,165,.2)}
 .filters-body{overflow:hidden;max-height:0;transition:max-height .25s ease;background:var(--bg2)}
-.filters-body.open{max-height:600px}
+.filters-body.open{max-height:700px}
 .filters-inner{padding:12px 16px 14px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--border)}
 .frow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .flbl{font-size:12px;font-weight:700;color:var(--text3);min-width:56px}
@@ -147,7 +147,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg2);color:var(--text);mi
 .txn{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border)}
 .txn:active{background:var(--bg2)}
 .txn-ico{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
-.txn-ico.gas-ico{background:var(--red-bg)}.txn-ico.ing-ico{background:var(--green-bg)}.txn-ico.tr-ico{background:var(--purple-bg)}
+.txn-ico.gas-ico{background:var(--red-bg)}.txn-ico.ing-ico{background:var(--green-bg)}.txn-ico.tr-ico{background:var(--purple-bg)}.txn-ico.deu-ico{background:var(--teal-bg)}
 .txn-info{flex:1;min-width:0}
 .txn-name{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .txn-meta{font-size:12px;font-weight:500;color:var(--text3);margin-top:3px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
@@ -155,9 +155,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg2);color:var(--text);mi
 .ttag.gas{background:var(--red-bg);color:var(--red-text)}
 .ttag.ing{background:var(--green-bg);color:var(--green-text)}
 .ttag.tr{background:var(--purple-bg);color:var(--purple-text)}
+.ttag.deu{background:var(--teal-bg);color:var(--teal-text)}
 .bswatch{display:inline-block;width:9px;height:9px;border-radius:2px}
 .txn-amt{font-family:'DM Mono',monospace;font-size:15px;font-weight:700;flex-shrink:0}
-.txn-amt.ing{color:var(--green)}.txn-amt.gas{color:var(--red)}.txn-amt.tr{color:var(--purple)}
+.txn-amt.ing{color:var(--green)}.txn-amt.gas{color:var(--red)}.txn-amt.tr{color:var(--purple)}.txn-amt.deu{color:var(--teal)}
 .txn-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:5px 7px;border-radius:8px;flex-shrink:0;line-height:1}
 .txn-del:hover{background:var(--red-bg);color:var(--red)}
 .pagination{display:flex;align-items:center;justify-content:center;gap:12px;padding:16px}
@@ -328,6 +329,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg2);color:var(--text);mi
             <button class="fchip" onclick="setFilter('flujo','ingreso',this)">Ingresos</button>
             <button class="fchip" onclick="setFilter('flujo','gasto',this)">Gastos</button>
             <button class="fchip" onclick="setFilter('flujo','transferencia',this)">Transf.</button>
+            <button class="fchip" onclick="setFilter('flujo','abono',this)">💳 Abonos</button>
           </div>
           <div class="frow">
             <span class="flbl">Etiqueta</span>
@@ -571,6 +573,7 @@ function renderDash(){
   document.getElementById('total-liq').textContent='$'+fmt(total);
   document.getElementById('banks-list').innerHTML=sr.length?sr.map(b=>`<div class="bank-item"><div class="b-dot" style="background:${b.color}"></div><span class="b-name">${b.nombre}</span><span class="b-amt">${b.saldo_real<0?'−':''}$${fmt(Math.abs(b.saldo_real))}</span></div>`).join(''):'<div style="color:rgba(255,255,255,.4);font-size:13px">Sin bancos</div>';
 
+  // Dashboard stats excluyen abonos de deuda para no doble-contar (la deuda ya figura en stat-deu)
   const enRango=MOVS.filter(m=>m.fecha>=desde&&m.fecha<=hasta&&!m.deuda_id);
   const ing30=enRango.filter(m=>m.tipo==='ingreso').reduce((s,m)=>s+Number(m.monto),0);
   const gas30=enRango.filter(m=>m.tipo==='gasto').reduce((s,m)=>s+Number(m.monto),0);
@@ -611,6 +614,7 @@ function renderDash(){
   renderChart();renderAlertas();
 }
 function renderChart(){
+  // El gráfico de flujo excluye abonos (ya están contabilizados como deuda pendiente)
   const{desde,hasta}=getDashRango();
   const ctx=document.getElementById('flowChart').getContext('2d');
   const labels=[],ing=[],gas=[];
@@ -627,32 +631,23 @@ function renderChart(){
   if(window._ch)window._ch.destroy();
   window._ch=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Ingresos',data:ing,borderColor:'#3B6D11',backgroundColor:'rgba(59,109,17,0.1)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#3B6D11',tension:.35,fill:true},{label:'Gastos',data:gas,borderColor:'#A32D2D',backgroundColor:'rgba(163,45,45,0.07)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#A32D2D',tension:.35,fill:true}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' $'+Math.round(c.raw).toLocaleString('es')}}},scales:{x:{grid:{display:false},ticks:{font:{size:11,weight:'600'},color:'#888880'}},y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:11,family:'DM Mono',weight:'500'},color:'#888880',callback:v=>v>=1000?'$'+Math.round(v/1000)+'k':'$'+Math.round(v)}}}}})
 }
+
 /* ── ALERTAS DASHBOARD CON CLICK PARA ABONAR ── */
 function renderAlertas(){
   const hoy=new Date();
   const{desde,hasta}=getDashRango();
   const todasActivas=DEUDAS.filter(d=>!d.pagado&&d.monto_pagado<d.monto_total);
-
-  // Filtro etiqueta activo
   const etiqActiva=window._dashEtiqFiltro||'todas';
-
-  // Cards: deudas en rango + deudas futuras como cronograma
   const enRango=DEUDAS.filter(d=>d.fecha_vencimiento&&d.fecha_vencimiento>=desde&&d.fecha_vencimiento<=hasta&&!d.pagado&&d.monto_pagado<d.monto_total);
   const futuras=DEUDAS.filter(d=>d.fecha_vencimiento&&d.fecha_vencimiento>hasta&&!d.pagado&&d.monto_pagado<d.monto_total);
   const saldadas=DEUDAS.filter(d=>(d.pagado||d.monto_pagado>=d.monto_total)&&d.fecha_vencimiento&&d.fecha_vencimiento>=desde&&d.fecha_vencimiento<=hasta);
-
-  // Etiquetas únicas para filtro
   const etiquetas=[...new Set(DEUDAS.map(d=>d.etiqueta).filter(Boolean))];
   const cont=document.getElementById('dash-alertas');
-
-  // Filtro chips
   let chipsHtml=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
     <button onclick="setDashEtiq('todas')" style="font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;border:1.5px solid ${etiqActiva==='todas'?'var(--text)':'var(--border2)'};background:${etiqActiva==='todas'?'var(--text)':'transparent'};color:${etiqActiva==='todas'?'#fff':'var(--text2)'};cursor:pointer;font-family:inherit">Todas</button>`;
   etiquetas.forEach(e=>{const col=COLOR_ETIQ_DEUDA[e]||'#888880';const sel=etiqActiva===e;chipsHtml+=`<button onclick="setDashEtiq('${e}')" style="font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;border:1.5px solid ${sel?col:'var(--border2)'};background:${sel?col:'transparent'};color:${sel?'#fff':col};cursor:pointer;font-family:inherit">${e}</button>`});
   chipsHtml+='</div>';
-
   function filtrarPorEtiq(arr){return etiqActiva==='todas'?arr:arr.filter(d=>d.etiqueta===etiqActiva)}
-
   function buildCard(d,modo){
     const pend=d.monto_total-d.monto_pagado;
     const pct=Math.min(100,Math.round((d.monto_pagado/d.monto_total)*100));
@@ -660,7 +655,6 @@ function renderAlertas(){
     const dias=venc?Math.ceil((venc-hoy)/864e5):999;
     const etColor=COLOR_ETIQ_DEUDA[d.etiqueta]||'#888880';
     const vs=venc?venc.toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'}):'Sin fecha';
-
     let badgeBg,badgeColor,badgeTxt;
     if(modo==='saldada'){badgeBg='var(--green-bg)';badgeColor='var(--green-text)';badgeTxt='✓ Saldada'}
     else if(modo==='futura'){badgeBg='var(--blue-bg)';badgeColor='var(--blue-text)';badgeTxt='📅 Programada'}
@@ -668,9 +662,7 @@ function renderAlertas(){
     else if(dias<=3){badgeBg='var(--red-bg)';badgeColor='var(--red-text)';badgeTxt='🔴 Urgente'}
     else if(dias<=7){badgeBg='var(--amber-bg)';badgeColor='var(--amber-text)';badgeTxt='🟡 Esta semana'}
     else{badgeBg='var(--bg2)';badgeColor='var(--text2)';badgeTxt='Pendiente'}
-
     const borderColor=modo==='saldada'?'rgba(59,109,17,.2)':modo==='futura'?'rgba(24,95,165,.2)':dias<=3?'rgba(163,45,45,.25)':dias<=7?'rgba(146,94,8,.2)':'var(--border)';
-
     return`<div style="border-radius:12px;border:1.5px solid ${borderColor};background:var(--bg);overflow:hidden;cursor:pointer" onclick="abrirPago('${d.id}',null)">
       <div style="padding:13px 14px 10px;display:flex;gap:11px;align-items:flex-start">
         <div style="width:10px;height:10px;border-radius:50%;background:${etColor};flex-shrink:0;margin-top:4px"></div>
@@ -688,39 +680,18 @@ function renderAlertas(){
       ${modo!=='saldada'?`<div style="padding:8px 14px;border-top:1px solid var(--border);background:var(--bg2);font-size:12px;font-weight:700;color:var(--green-text)">💳 Toca para abonar</div>`:''}
     </div>`
   }
-
   const enRangoF=filtrarPorEtiq(enRango);
   const futurasF=filtrarPorEtiq(futuras);
   const saldadasF=filtrarPorEtiq(saldadas);
-
   let html=chipsHtml;
-
-  if(!enRangoF.length&&!futurasF.length&&!saldadasF.length){
-    html+='<div class="empty" style="padding:16px 0">Sin deudas para este rango</div>';
-    cont.innerHTML=html;return
-  }
-
-  if(enRangoF.length){
-    html+=`<div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;padding-left:2px">En este rango</div>`;
-    html+=`<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">${enRangoF.map(d=>buildCard(d,'rango')).join('')}</div>`;
-  }
-  if(futurasF.length){
-    html+=`<div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--blue-text);margin-bottom:8px;padding-left:2px">📅 Cronograma futuro</div>`;
-    html+=`<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">${futurasF.map(d=>buildCard(d,'futura')).join('')}</div>`;
-  }
-  if(saldadasF.length){
-    html+=`<div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--green-text);margin-bottom:8px;padding-left:2px">✓ Saldadas en este rango</div>`;
-    html+=`<div style="display:flex;flex-direction:column;gap:8px">${saldadasF.map(d=>buildCard(d,'saldada')).join('')}</div>`;
-  }
-
+  if(!enRangoF.length&&!futurasF.length&&!saldadasF.length){html+='<div class="empty" style="padding:16px 0">Sin deudas para este rango</div>';cont.innerHTML=html;return}
+  if(enRangoF.length){html+=`<div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;padding-left:2px">En este rango</div>`;html+=`<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">${enRangoF.map(d=>buildCard(d,'rango')).join('')}</div>`;}
+  if(futurasF.length){html+=`<div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--blue-text);margin-bottom:8px;padding-left:2px">📅 Cronograma futuro</div>`;html+=`<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">${futurasF.map(d=>buildCard(d,'futura')).join('')}</div>`;}
+  if(saldadasF.length){html+=`<div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--green-text);margin-bottom:8px;padding-left:2px">✓ Saldadas en este rango</div>`;html+=`<div style="display:flex;flex-direction:column;gap:8px">${saldadasF.map(d=>buildCard(d,'saldada')).join('')}</div>`;}
   cont.innerHTML=html
 }
 
-function setDashEtiq(etiq){
-  window._dashEtiqFiltro=etiq;
-  renderAlertas()
-}
-
+function setDashEtiq(etiq){window._dashEtiqFiltro=etiq;renderAlertas()}
 function setSubtab(tab,btn){document.querySelectorAll('.subtab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.subtab-content').forEach(c=>c.classList.remove('active'));btn.classList.add('active');document.getElementById('sub-'+tab).classList.add('active')}
 
 function renderBancoFilterChips(){const cont=document.getElementById('banco-filter-chips');if(!cont)return;const activo=fBanco;let html=`<button class="fchip ${activo==='todos'?'active':''}" onclick="setFilter('banco','todos',this)">Todos</button>`;BANCOS.forEach(b=>{html+=`<button class="fchip ${activo===b.id?'active':''}" onclick="setFilter('banco','${b.id}',this)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${b.color};margin-right:5px"></span>${b.nombre}</button>`});cont.innerHTML=html}
@@ -736,15 +707,91 @@ function setFilter(grp,val,btn){
   applyFilters()
 }
 function setDeudasFilter(grp,val,btn){if(grp==='estado')dFiltroEstado=val;else dFiltroEtiq=val;btn.closest('.frow').querySelectorAll('.fchip').forEach(c=>c.classList.remove('active'));btn.classList.add('active');renderDeudas()}
-function applyFilters(){let ms=[...MOVS];if(fFlujo==='transferencia')ms=ms.filter(m=>m.tipo==='transferencia');else if(fFlujo!=='todos')ms=ms.filter(m=>m.tipo===fFlujo);if(fEtiqueta!=='todos')ms=ms.filter(m=>m.etiqueta===fEtiqueta);if(fBanco!=='todos')ms=ms.filter(m=>m.banco_id===fBanco||m.banco_destino_id===fBanco);const desde=document.getElementById('f-desde')?.value;const hasta=document.getElementById('f-hasta')?.value;if(desde)ms=ms.filter(m=>m.fecha>=desde);if(hasta)ms=ms.filter(m=>m.fecha<=hasta);ms.sort((a,b)=>b.fecha.localeCompare(a.fecha));filteredMovs=ms;currentPage=1;renderMovPage()}
 
-function renderMovPage(){const total=filteredMovs.length;const pages=Math.max(1,Math.ceil(total/PER_PAGE));if(currentPage>pages)currentPage=pages;const start=(currentPage-1)*PER_PAGE;const slice=filteredMovs.slice(start,start+PER_PAGE);if(!slice.length){document.getElementById('mov-list').innerHTML='<div class="empty">Sin movimientos para este filtro</div>';document.getElementById('pagination').innerHTML='';return}const grp={};slice.forEach(m=>{if(!grp[m.fecha])grp[m.fecha]=[];grp[m.fecha].push(m)});let html='';Object.keys(grp).sort((a,b)=>b.localeCompare(a)).forEach(fecha=>{const dl=new Date(fecha+'T12:00:00').toLocaleDateString('es',{weekday:'long',day:'numeric',month:'short'});html+=`<div class="day-lbl">${dl}</div>`;grp[fecha].forEach(m=>{const b=BANCOS.find(x=>x.id===m.banco_id);const bD=m.banco_destino_id?BANCOS.find(x=>x.id===m.banco_destino_id):null;if(m.tipo==='transferencia'){html+=`<div class="txn"><div class="txn-ico tr-ico">↔</div><div class="txn-info"><div class="txn-name">${m.descripcion||'Transferencia interbancaria'}</div><div class="txn-meta">${b?`<span class="bswatch" style="background:${b.color}"></span>${b.nombre}`:''}<span style="color:var(--text3)">→</span>${bD?`<span class="bswatch" style="background:${bD.color}"></span>${bD.nombre}`:''}<span class="ttag tr">Transf.</span></div></div><span class="txn-amt tr">$${fmt(m.monto)}</span><button class="txn-del" onclick="eliminarMov('${m.id}',event)">✕</button></div>`;return}const esIng=m.tipo==='ingreso';
-const esAbono=!!m.deuda_id;
-const emoji=esAbono?'💳':getEtiquetaEmoji(m.etiqueta,m.tipo);
-const icoClass=esAbono?'gas-ico':esIng?'ing-ico':'gas-ico';
-const tagClass=esIng?'ing':'gas';
-const deudaTag=esAbono?`<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;background:var(--amber-bg);color:var(--amber-text)">Abono deuda</span>`:'';
-html+=`<div class="txn"><div class="txn-ico ${icoClass}">${emoji}</div><div class="txn-info"><div class="txn-name">${m.descripcion}</div><div class="txn-meta">${b?`<span class="bswatch" style="background:${b.color}"></span>${b.nombre}`:''}<span class="ttag ${tagClass}">${m.etiqueta||'Sin etiqueta'}</span>${deudaTag}${m.incluye_impuesto?'<span style="font-size:11px;color:var(--red);font-weight:700">IVA</span>':''}</div></div><span class="txn-amt gas">−$${fmt(m.monto)}</span><button class="txn-del" onclick="eliminarMov('${m.id}',event)">✕</button></div>`;
+// ── APPLY FILTERS: ahora incluye abonos de deudas en el flujo ──
+function applyFilters(){
+  let ms=[...MOVS];
+
+  // Filtro por flujo - 'abono' es un tipo virtual para filtrar solo abonos de deudas
+  if(fFlujo==='abono'){
+    ms=ms.filter(m=>!!m.deuda_id);
+  } else if(fFlujo==='transferencia'){
+    ms=ms.filter(m=>m.tipo==='transferencia'&&!m.deuda_id);
+  } else if(fFlujo==='ingreso'){
+    ms=ms.filter(m=>m.tipo==='ingreso'&&!m.deuda_id);
+  } else if(fFlujo==='gasto'){
+    // Gastos normales sin abonos de deuda
+    ms=ms.filter(m=>m.tipo==='gasto'&&!m.deuda_id);
+  }
+  // 'todos' incluye todo: ingresos, gastos, transferencias Y abonos de deudas
+
+  if(fEtiqueta!=='todos')ms=ms.filter(m=>m.etiqueta===fEtiqueta);
+  if(fBanco!=='todos')ms=ms.filter(m=>m.banco_id===fBanco||m.banco_destino_id===fBanco);
+  const desde=document.getElementById('f-desde')?.value;
+  const hasta=document.getElementById('f-hasta')?.value;
+  if(desde)ms=ms.filter(m=>m.fecha>=desde);
+  if(hasta)ms=ms.filter(m=>m.fecha<=hasta);
+  ms.sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  filteredMovs=ms;currentPage=1;renderMovPage()
+}
+
+// ── RENDER MOVIMIENTOS: muestra abonos de deuda con ícono y tag especial ──
+function renderMovPage(){
+  const total=filteredMovs.length;
+  const pages=Math.max(1,Math.ceil(total/PER_PAGE));
+  if(currentPage>pages)currentPage=pages;
+  const start=(currentPage-1)*PER_PAGE;
+  const slice=filteredMovs.slice(start,start+PER_PAGE);
+  if(!slice.length){document.getElementById('mov-list').innerHTML='<div class="empty">Sin movimientos para este filtro</div>';document.getElementById('pagination').innerHTML='';return}
+  const grp={};
+  slice.forEach(m=>{if(!grp[m.fecha])grp[m.fecha]=[];grp[m.fecha].push(m)});
+  let html='';
+  Object.keys(grp).sort((a,b)=>b.localeCompare(a)).forEach(fecha=>{
+    const dl=new Date(fecha+'T12:00:00').toLocaleDateString('es',{weekday:'long',day:'numeric',month:'short'});
+    html+=`<div class="day-lbl">${dl}</div>`;
+    grp[fecha].forEach(m=>{
+      const b=BANCOS.find(x=>x.id===m.banco_id);
+      const bD=m.banco_destino_id?BANCOS.find(x=>x.id===m.banco_destino_id):null;
+
+      // ── ABONO DE DEUDA ──
+      if(m.deuda_id){
+        const deuda=DEUDAS.find(d=>d.id===m.deuda_id);
+        const deudaNombre=deuda?deuda.nombre:'Deuda';
+        const etColor=COLOR_ETIQ_DEUDA[m.etiqueta]||'#0E6B6B';
+        html+=`<div class="txn" style="background:var(--teal-bg) !important;border-left:3px solid var(--teal)">
+          <div class="txn-ico deu-ico">💳</div>
+          <div class="txn-info">
+            <div class="txn-name" style="color:var(--teal-text)">${m.descripcion||'Abono deuda'}</div>
+            <div class="txn-meta">
+              ${b?`<span class="bswatch" style="background:${b.color}"></span>${b.nombre}`:''}
+              <span class="ttag deu">Abono deuda</span>
+              <span style="font-size:11px;font-weight:700;color:var(--teal-text);background:rgba(14,107,107,.12);padding:2px 6px;border-radius:4px">📎 ${deudaNombre}</span>
+            </div>
+          </div>
+          <span class="txn-amt deu">−$${fmt(m.monto)}</span>
+          <button class="txn-del" onclick="eliminarMov('${m.id}',event)">✕</button>
+        </div>`;
+        return;
+      }
+
+      // ── TRANSFERENCIA ──
+      if(m.tipo==='transferencia'){
+        html+=`<div class="txn"><div class="txn-ico tr-ico">↔</div><div class="txn-info"><div class="txn-name">${m.descripcion||'Transferencia interbancaria'}</div><div class="txn-meta">${b?`<span class="bswatch" style="background:${b.color}"></span>${b.nombre}`:''}<span style="color:var(--text3)">→</span>${bD?`<span class="bswatch" style="background:${bD.color}"></span>${bD.nombre}`:''}<span class="ttag tr">Transf.</span></div></div><span class="txn-amt tr">$${fmt(m.monto)}</span><button class="txn-del" onclick="eliminarMov('${m.id}',event)">✕</button></div>`;
+        return;
+      }
+
+      // ── INGRESO / GASTO ──
+      const esIng=m.tipo==='ingreso';
+      const emoji=getEtiquetaEmoji(m.etiqueta,m.tipo);
+      const icoClass=esIng?'ing-ico':'gas-ico';
+      const tagClass=esIng?'ing':'gas';
+      html+=`<div class="txn"><div class="txn-ico ${icoClass}">${emoji}</div><div class="txn-info"><div class="txn-name">${m.descripcion}</div><div class="txn-meta">${b?`<span class="bswatch" style="background:${b.color}"></span>${b.nombre}`:''}<span class="ttag ${tagClass}">${m.etiqueta||'Sin etiqueta'}</span>${m.incluye_impuesto?'<span style="font-size:11px;color:var(--red);font-weight:700">IVA</span>':''}</div></div><span class="txn-amt ${esIng?'ing':'gas'}">${esIng?'+':'−'}$${fmt(m.monto)}</span><button class="txn-del" onclick="eliminarMov('${m.id}',event)">✕</button></div>`;
+    });
+  });
+  document.getElementById('mov-list').innerHTML=html;
+  if(pages<=1){document.getElementById('pagination').innerHTML='';return}
+  document.getElementById('pagination').innerHTML=`<button class="pg-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>← Ant.</button><span class="pg-info">Pág. ${currentPage} de ${pages}</span><button class="pg-btn" onclick="goPage(${currentPage+1})" ${currentPage===pages?'disabled':''}>Sig. →</button>`
+}
 
 function goPage(p){currentPage=p;renderMovPage();document.getElementById('sub-movs').scrollTop=0}
 
@@ -752,13 +799,11 @@ async function eliminarMov(id,e){e.stopPropagation();if(!confirm('¿Eliminar est
 
 function renderDeudas(){let activas=DEUDAS;if(dFiltroEstado==='activas')activas=DEUDAS.filter(d=>!d.pagado&&d.monto_pagado<d.monto_total);if(dFiltroEtiq!=='todas')activas=activas.filter(d=>d.etiqueta===dFiltroEtiq);const totalPend=activas.filter(d=>!d.pagado).reduce((s,d)=>s+(d.monto_total-d.monto_pagado),0);document.getElementById('deudas-total-lbl').textContent='$'+fmt(totalPend);if(!activas.length){document.getElementById('deudas-list').innerHTML='<div class="empty">Sin deudas para este filtro</div>';return}const hoy=new Date();document.getElementById('deudas-list').innerHTML=activas.map(d=>{const pend=d.monto_total-d.monto_pagado;const pct=Math.min(100,Math.round((d.monto_pagado/d.monto_total)*100));const venc=d.fecha_vencimiento?new Date(d.fecha_vencimiento+'T12:00:00'):null;const dias=venc?Math.ceil((venc-hoy)/864e5):999;const type=d.pagado?'ok':dias<=3?'danger':dias<=7?'warn':'ok';const bdg=d.pagado?'Saldada':dias<=0?'Vencida':dias<=3?'Urgente':dias<=7?'Esta semana':'Pendiente';const vs=venc?venc.toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'}):'Sin fecha';const etColor=COLOR_ETIQ_DEUDA[d.etiqueta]||'#888880';return`<div class="debt-card"><div class="debt-card-head"><div class="debt-etiqueta-dot" style="background:${etColor}"></div><div class="debt-card-info"><div class="debt-card-name">${d.nombre}</div><div class="debt-card-sub">Vence: ${vs} · ${pct}% pagado · <span style="color:${etColor};font-weight:700">${d.etiqueta||'Sin etiqueta'}</span></div></div><div class="debt-card-right"><div class="debt-card-amt">${d.pagado?'✓':'−$'+fmt(pend)}</div><div class="debt-card-badge badge-${type}">${bdg}</div></div></div><div class="debt-prog-bar"><div class="debt-prog-fill" style="width:${pct}%"></div></div><div class="debt-card-footer">${!d.pagado?`<button class="d-pay-btn" onclick="abrirPago('${d.id}',event)">💳 Abonar</button>`:''}<button class="d-hist-btn" onclick="abrirHistorial('${d.id}',event)">📋 Historial</button><button class="d-del-btn" onclick="eliminarDeuda('${d.id}',event)">✕</button></div></div>`}).join('')}
 
-/* ── MODAL PAGO: también es llamado desde el dashboard ── */
 function abrirPago(deudaId,e){if(e)e.stopPropagation();deudaActivaId=deudaId;const d=DEUDAS.find(x=>x.id===deudaId);if(!d)return;document.getElementById('modal-pago-nombre').textContent='Abonar: '+d.nombre;const pend=d.monto_total-d.monto_pagado;document.getElementById('modal-pago-sub').textContent=`Pendiente: $${fmt(pend)} · ${d.etiqueta||''}`;document.getElementById('m-monto').value='';document.getElementById('m-fecha').value=HOY;const sr=saldosReales();selModalBancoId=sr[0]?.id||null;document.getElementById('m-bank-list').innerHTML=sr.map((b,i)=>`<button class="bsbtn ${i===0?'sel':''}" onclick="selModalBanco('${b.id}',this)"><div class="bcolor" style="background:${b.color}"></div>${b.nombre}<span style="margin-left:auto;font-family:'DM Mono';font-size:12px;color:var(--text3);font-weight:600">$${fmt(b.saldo_real)}</span></button>`).join('');document.getElementById('modal-pago').classList.add('open')}
 
 function selModalBanco(id,btn){selModalBancoId=id;document.querySelectorAll('#m-bank-list .bsbtn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel')}
 function cerrarModal(id){document.getElementById(id).classList.remove('open');if(id==='modal-pago')deudaActivaId=null;if(id==='modal-historial')historialDeudaId=null}
 
-/* ── CONFIRMAR PAGO: registra movimiento Y descuenta del banco ── */
 async function confirmarPago(){
   const monto=parseFloat(document.getElementById('m-monto').value);
   const fecha=document.getElementById('m-fecha').value||HOY;
@@ -769,8 +814,6 @@ async function confirmarPago(){
   const pagoReal=Math.min(monto,pend);
   const nuevoPagado=d.monto_pagado+pagoReal;
   const saldado=nuevoPagado>=d.monto_total;
-
-  /* El movimiento de abono: tipo 'gasto' para descontar del banco */
   const abonoMov={
     fecha,
     descripcion:'Abono deuda: '+d.nombre,
@@ -782,21 +825,16 @@ async function confirmarPago(){
     incluye_impuesto:false,
     deuda_id:d.id
   };
-
   if(!db){
-    /* DEMO: actualizar localmente */
     d.monto_pagado=nuevoPagado;
     if(saldado)d.pagado=true;
     MOVS.unshift({...abonoMov,id:'pago_'+Date.now()});
   } else {
     spin(true);
-    /* 1) Actualizar deuda */
     const{error:eDeuda}=await db.from('deudas').update({monto_pagado:nuevoPagado,pagado:saldado}).eq('id',deudaActivaId);
     if(eDeuda){toast('Error al actualizar deuda: '+eDeuda.message);spin(false);return}
-    /* 2) Insertar movimiento de gasto (descuenta del banco) */
     const{error:eMov}=await db.from('movimientos').insert(abonoMov);
     if(eMov){toast('Error al registrar movimiento: '+eMov.message);spin(false);return}
-    /* 3) Recargar datos */
     const[rm,rd]=await Promise.all([
       db.from('movimientos').select('*').order('fecha',{ascending:false}),
       db.from('deudas').select('*').order('creado_en',{ascending:false})
@@ -824,7 +862,6 @@ function selTrfDestino(id,btn){selTrfDestinoId=id;document.querySelectorAll('#tr
 function renderEtiquetaPills(){const lista=curTipo==='ingreso'?ETIQUETAS_INGRESO:ETIQUETAS_GASTO;if(curTipo==='deuda'||curTipo==='transferencia'){document.getElementById('etiqueta-field').style.display='none';document.getElementById('deuda-etiq-field').style.display=curTipo==='deuda'?'':'none';return}document.getElementById('etiqueta-field').style.display='';document.getElementById('deuda-etiq-field').style.display='none';selEtiqueta=lista[0].key;document.getElementById('etiqueta-pills').innerHTML=lista.map((e,i)=>`<button class="pill ${i===0?'sel':''}" data-etq="${e.key}" onclick="selEtq('${e.key}',this)">${e.emoji} ${e.key}</button>`).join('')}
 function selEtq(key,btn){selEtiqueta=key;document.querySelectorAll('#etiqueta-pills .pill').forEach(p=>p.classList.remove('sel'));btn.classList.add('sel')}
 
-/* ── PILLS DE ETIQUETA DE DEUDA (event delegation) ── */
 document.getElementById('deuda-etiq-pills').addEventListener('click',function(e){const btn=e.target.closest('.pill');if(!btn)return;document.querySelectorAll('#deuda-etiq-pills .pill').forEach(x=>x.classList.remove('sel'));btn.classList.add('sel');selDeudaEtiq=btn.dataset.etiq});
 
 async function guardarMovimiento(){
@@ -838,26 +875,9 @@ async function guardarMovimiento(){
   if(!desc||isNaN(monto)||monto<=0){toast('⚠ Completa descripción y monto');return}
 
   if(curTipo==='deuda'){
-    /* Etiqueta viene de selDeudaEtiq que se actualiza con event delegation */
     const etiquetaDeuda=selDeudaEtiq||'Hogar';
     const nueva={id:'dlocal_'+Date.now(),nombre:desc,monto_total:monto,monto_pagado:0,fecha_vencimiento:venc||null,pagado:false,etiqueta:etiquetaDeuda};
-    if(!db){
-      DEUDAS.push(nueva);
-    } else {
-      spin(true);
-      const{error}=await db.from('deudas').insert({
-        nombre:desc,
-        monto_total:monto,
-        monto_pagado:0,
-        fecha_vencimiento:venc||null,
-        pagado:false,
-        etiqueta:etiquetaDeuda
-      });
-      if(error){toast('Error: '+error.message);spin(false);return}
-      const{data}=await db.from('deudas').select('*').order('creado_en',{ascending:false});
-      DEUDAS=data||[];
-      spin(false);
-    }
+    if(!db){DEUDAS.push(nueva);}else{spin(true);const{error}=await db.from('deudas').insert({nombre:desc,monto_total:monto,monto_pagado:0,fecha_vencimiento:venc||null,pagado:false,etiqueta:etiquetaDeuda});if(error){toast('Error: '+error.message);spin(false);return}const{data}=await db.from('deudas').select('*').order('creado_en',{ascending:false});DEUDAS=data||[];spin(false);}
     renderTodo();resetForm();toast('✓ Deuda registrada');return
   }
 
