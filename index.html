@@ -1502,7 +1502,7 @@ async function guardarMovimiento(){
   if(!db){MOVS.unshift({...mov,id:'local_'+Date.now()})}
   else{spin(true);const{error}=await db.from('movimientos').insert(mov);if(error){toast('Error: '+error.message);spin(false);return}const{data}=await db.from('movimientos').select('*').order('fecha',{ascending:false});MOVS=data||[];spin(false)}
   const newId=db?null:'local_'+Date.now();
-  await guardarPrestamoSiAplica(newId,monto,fecha,desc);
+  await guardarPrestamoSiAplica(null,monto,fecha,desc);
   renderTodo();resetForm();toast('✓ Movimiento guardado');goScreen('dash',document.getElementById('nav-dash'))
 }
 
@@ -1693,10 +1693,18 @@ async function guardarPrestamoSiAplica(movId,monto,fecha,desc){
   const esPrestado=document.getElementById('prestado-sw').classList.contains('on');if(!esPrestado)return;
   const devolucion=document.getElementById('inp-devolucion').value||null;
   const nota=document.getElementById('inp-prest-nota').value.trim();
-  const nuevo={persona:selPrestPersona,monto,monto_recibido:0,fecha_prestamo:fecha,fecha_devolucion:devolucion,descripcion:desc,nota,cobrado:false,mov_id:movId};
+  const nuevo={persona:selPrestPersona,monto,monto_recibido:0,fecha_prestamo:fecha,fecha_devolucion:devolucion,descripcion:desc,nota,cobrado:false,mov_id:movId||null};
   if(!db){PRESTAMOS.push({...nuevo,id:'pl_'+Date.now()})}
-  else{await db.from('prestamos').insert(nuevo)}
-  document.getElementById('prestado-sw').classList.remove('on');document.getElementById('prestado-fields').style.display='none';document.getElementById('inp-devolucion').value='';document.getElementById('inp-prest-nota').value='';
+  else{
+    const{error}=await db.from('prestamos').insert(nuevo);
+    if(error){toast('Error préstamo: '+error.message);return}
+    const{data}=await db.from('prestamos').select('*').order('creado_en',{ascending:false});
+    PRESTAMOS=data||[];
+  }
+  document.getElementById('prestado-sw').classList.remove('on');
+  document.getElementById('prestado-fields').style.display='none';
+  document.getElementById('inp-devolucion').value='';
+  document.getElementById('inp-prest-nota').value='';
 }
 
 function abrirCobro(prestId,e){if(e)e.stopPropagation();cobroActivoId=prestId;const p=PRESTAMOS.find(x=>x.id===prestId);if(!p)return;const pend=p.monto-(p.monto_recibido||0);document.getElementById('cobro-nombre').textContent='Cobrar: '+p.persona;document.getElementById('cobro-sub').textContent=`Pendiente: $${fmt(pend)} de $${fmt(p.monto)}`;document.getElementById('cobro-monto').value='';document.getElementById('cobro-fecha').value=HOY;const sr=saldosReales();selCobroBancoId=sr[0]?.id||null;document.getElementById('cobro-bank-list').innerHTML=sr.map((b,i)=>`<button class="bsbtn ${i===0?'sel':''}" onclick="selCobroBanco('${b.id}',this)"><div class="bcolor" style="background:${b.color}"></div>${b.nombre}<span style="margin-left:auto;font-family:'DM Mono';font-size:12px;color:var(--text3);font-weight:600">$${fmt(b.saldo_real)}</span></button>`).join('');document.getElementById('modal-cobro').classList.add('open')}
