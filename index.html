@@ -1687,7 +1687,14 @@ function renderCobrar(){
 }
 
 function togglePrestado(){const sw=document.getElementById('prestado-sw');sw.classList.toggle('on');document.getElementById('prestado-fields').style.display=sw.classList.contains('on')?'flex':'none'}
-document.getElementById('prestado-persona-pills').addEventListener('click',function(e){const btn=e.target.closest('.pill');if(!btn)return;document.querySelectorAll('#prestado-persona-pills .pill').forEach(x=>x.classList.remove('sel'));btn.classList.add('sel');selPrestPersona=btn.dataset.persona});
+document.getElementById('prestado-persona-pills').addEventListener('click',function(e){
+  const btn=e.target.closest('.pill');
+  if(!btn)return;
+  document.querySelectorAll('#prestado-persona-pills .pill').forEach(x=>x.classList.remove('sel'));
+  btn.classList.add('sel');
+  selPrestPersona=btn.dataset.persona;
+  console.log('Persona seleccionada:',selPrestPersona);
+});
 
 async function guardarPrestamoSiAplica(movId,monto,fecha,desc){
   const esPrestado=document.getElementById('prestado-sw').classList.contains('on');if(!esPrestado)return;
