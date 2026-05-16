@@ -303,6 +303,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg2);color:var(--text);mi
         <div class="section-title">Alertas de pagos · toca para abonar</div>
         <div class="alert-list" id="dash-alertas"></div>
       </div>
+      <div id="dash-cobrar-section">
+        <div class="section-title" style="color:var(--blue-text)">🤝 Cuentas por cobrar</div>
+        <div id="dash-cobrar-list"></div>
+      </div>
     </div>
   </div>
 
@@ -311,6 +315,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg2);color:var(--text);mi
     <div class="subtab-bar">
       <button class="subtab-btn active" id="stab-movs" onclick="setSubtab('movs',this)">📋 Movimientos</button>
       <button class="subtab-btn" id="stab-deudas" onclick="setSubtab('deudas',this)">💳 Deudas</button>
+      <button class="subtab-btn" id="stab-cobrar" onclick="setSubtab('cobrar',this)">🤝 Por Cobrar</button>
     </div>
     <div class="subtab-content active" id="sub-movs">
       <!-- FILTROS PLEGABLES -->
@@ -385,6 +390,31 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg2);color:var(--text);mi
       <div id="deudas-list"><div class="loading">Cargando...</div></div>
       <div style="height:24px"></div>
     </div>
+    <!-- ═══ SUB: CUENTAS POR COBRAR ═══ -->
+    <div class="subtab-content" id="sub-cobrar">
+      <div class="deudas-header">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="frow">
+            <span class="flbl">Estado</span>
+            <button class="fchip active" onclick="setPrestFilter('estado','activos',this)">Activos</button>
+            <button class="fchip" onclick="setPrestFilter('estado','todos',this)">Todos</button>
+          </div>
+          <div class="frow">
+            <span class="flbl">Persona</span>
+            <div id="prest-persona-chips" style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="fchip active" onclick="setPrestFilter('persona','todas',this)">Todas</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="height:12px"></div>
+      <div style="margin:0 16px 4px;padding:12px 14px;background:var(--blue-bg);border-radius:var(--r);border:1.5px solid rgba(24,95,165,.2);display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--blue-text)">Total por cobrar</span>
+        <span style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:var(--blue)" id="cobrar-total-lbl">$0.00</span>
+      </div>
+      <div id="cobrar-list"><div class="loading">Cargando...</div></div>
+      <div style="height:24px"></div>
+    </div>
   </div>
 
   <!-- ═══ REGISTRO ═══ -->
@@ -408,6 +438,34 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg2);color:var(--text);mi
         </div>
         <div class="ff" id="banco-field"><span class="fl">Banco / Método de pago</span><div class="bank-btns" id="bank-btns-list"><div class="loading">Cargando...</div></div></div>
         <div class="ff" id="venc-field" style="display:none"><span class="fl">Fecha de vencimiento</span><input class="fi" type="date" id="inp-venc"/></div>
+        <div id="prestado-toggle-row" class="tog-row" style="display:none">
+          <div>
+            <div class="tog-lbl" style="font-weight:700">🤝 ¿Es prestado?</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:2px">Registrar como cuenta por cobrar</div>
+          </div>
+          <button class="tsw" id="prestado-sw" onclick="togglePrestado()"><div class="tkn"></div></button>
+        </div>
+        <div id="prestado-fields" style="display:none;background:var(--blue-bg);border-radius:var(--r);padding:14px;flex-direction:column;gap:10px;border:1.5px solid rgba(24,95,165,.15)">
+          <div class="ff">
+            <span class="fl">¿A quién le prestaste?</span>
+            <div class="pills" id="prestado-persona-pills">
+              <button class="pill sel" data-persona="Camila">👤 Camila</button>
+              <button class="pill" data-persona="Victoria">👤 Victoria</button>
+              <button class="pill" data-persona="Humbria">👤 Humbria</button>
+              <button class="pill" data-persona="Richard">👤 Richard</button>
+              <button class="pill" data-persona="Oceango">👤 Oceango</button>
+              <button class="pill" data-persona="Rous">👤 Rous</button>
+            </div>
+          </div>
+          <div class="ff">
+            <span class="fl">¿Cuándo te lo devuelve?</span>
+            <input class="fi" type="date" id="inp-devolucion" style="margin-top:5px"/>
+          </div>
+          <div class="ff">
+            <span class="fl">Nota (opcional)</span>
+            <input class="fi" type="text" id="inp-prest-nota" placeholder="Ej: para viaje, devuelve en cuotas..."/>
+          </div>
+        </div>
         <div class="ff" id="deuda-etiq-field" style="display:none">
           <span class="fl">Clasificar deuda por</span>
           <div class="pills" id="deuda-etiq-pills">
@@ -566,6 +624,54 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg2);color:var(--text);mi
   </div>
 </div>
 
+
+<!-- MODAL COBRO PRÉSTAMO -->
+<div class="modal-ov" id="modal-cobro">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="cobro-nombre">Registrar cobro</div>
+    <div class="modal-subtitle" id="cobro-sub"></div>
+    <div class="modal-fields">
+      <div class="ff"><span class="fl">Monto cobrado (USD)</span><input class="fi" type="number" id="cobro-monto" placeholder="0.00" step="0.01" style="font-family:'DM Mono',monospace;font-weight:600"/></div>
+      <div class="ff"><span class="fl">Banco donde entra el dinero</span><div class="bank-btns" id="cobro-bank-list"></div></div>
+      <div class="ff"><span class="fl">Fecha del cobro</span><input class="fi" type="date" id="cobro-fecha"/></div>
+    </div>
+    <div class="modal-btns">
+      <button class="m-cancel" onclick="cerrarModal('modal-cobro')">Cancelar</button>
+      <button class="m-ok" onclick="confirmarCobro()">Registrar cobro</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR PRÉSTAMO -->
+<div class="modal-ov" id="modal-editar-prestamo">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Editar préstamo</div>
+    <span id="edit-prest-persona-val" style="display:none"></span>
+    <div class="modal-fields">
+      <div class="ff">
+        <span class="fl">Persona</span>
+        <div class="pills" id="edit-prest-persona-pills">
+          <button class="pill sel" data-persona="Camila">👤 Camila</button>
+          <button class="pill" data-persona="Victoria">👤 Victoria</button>
+          <button class="pill" data-persona="Humbria">👤 Humbria</button>
+          <button class="pill" data-persona="Richard">👤 Richard</button>
+          <button class="pill" data-persona="Oceango">👤 Oceango</button>
+          <button class="pill" data-persona="Rous">👤 Rous</button>
+        </div>
+      </div>
+      <div class="ff"><span class="fl">Monto total prestado</span><input class="fi" type="number" id="edit-prest-monto" step="0.01" style="font-family:'DM Mono',monospace;font-weight:600"/></div>
+      <div class="ff"><span class="fl">Fecha de devolución</span><input class="fi" type="date" id="edit-prest-devolucion"/></div>
+      <div class="ff"><span class="fl">Descripción</span><input class="fi" type="text" id="edit-prest-desc" placeholder="Para qué fue el préstamo"/></div>
+      <div class="ff"><span class="fl">Nota</span><input class="fi" type="text" id="edit-prest-nota" placeholder="Ej: devuelve en 3 cuotas"/></div>
+    </div>
+    <div class="modal-btns">
+      <button class="m-cancel" onclick="cerrarModal('modal-editar-prestamo')">Cancelar</button>
+      <button class="m-ok" onclick="guardarEdicionPrestamo()">Guardar</button>
+    </div>
+  </div>
+</div>
 <div class="spin-overlay" id="spinner"><div class="spin"></div></div>
 <div class="toast" id="toast"></div>
 
@@ -582,8 +688,10 @@ let curTipo='ingreso',deudaActivaId=null,historialDeudaId=null;
 const PER_PAGE=25;let currentPage=1,filteredMovs=[];
 const HOY=new Date().toISOString().split('T')[0];
 const H30=new Date(Date.now()-30*864e5).toISOString().split('T')[0];
-const ETIQUETAS_GASTO=[{key:'Compras',emoji:'🛒'},{key:'Supermercado',emoji:'🏪'},{key:'Educacion',emoji:'🎓'},{key:'Entretenimiento',emoji:'🎭'},{key:'Movilizacion',emoji:'🚗'},{key:'Servicios',emoji:'⚡'},{key:'Empresa',emoji:'🏢'},{key:'Hogar',emoji:'🏠'}];
+const ETIQUETAS_GASTO=[{key:'Compras',emoji:'🛒'},{key:'Supermercado',emoji:'🏪'},{key:'Restaurante',emoji:'🍽️'},{key:'Educacion',emoji:'🎓'},{key:'Entretenimiento',emoji:'🎭'},{key:'Movilizacion',emoji:'🚗'},{key:'Servicios',emoji:'⚡'},{key:'Empresa',emoji:'🏢'},{key:'Hogar',emoji:'🏠'},{key:'Gasto Bancario',emoji:'🏦'}];
 const ETIQUETAS_INGRESO=[{key:'Servicios',emoji:'⚡'},{key:'Salario',emoji:'💼'},{key:'Otros',emoji:'📌'},{key:'Empresa',emoji:'🏢'}];
+const PRESTADOS_PERSONAS=['Camila','Victoria','Humbria','Richard','Oceango','Rous'];
+let PRESTAMOS=[];
 const COLOR_ETIQ_DEUDA={Hogar:'#3B6D11',Camila:'#185FA5',Maria:'#A32D2D',Victoria:'#925E08',Otro:'#888880'};
 
 /* ── FILTROS PLEGABLES ── */
@@ -622,7 +730,7 @@ async function init(){
 }
 async function cargarTodo(){
   spin(true);
-  try{const[rb,rm,rd]=await Promise.all([db.from('bancos').select('*').order('creado_en'),db.from('movimientos').select('*').order('fecha',{ascending:false}),db.from('deudas').select('*').order('creado_en',{ascending:false})]);BANCOS=rb.data||[];MOVS=rm.data||[];DEUDAS=rd.data||[];renderTodo()}
+  try{const[rb,rm,rd,rp]=await Promise.all([db.from('bancos').select('*').order('creado_en'),db.from('movimientos').select('*').order('fecha',{ascending:false}),db.from('deudas').select('*').order('creado_en',{ascending:false}),db.from('prestamos').select('*').order('creado_en',{ascending:false})]);BANCOS=rb.data||[];MOVS=rm.data||[];DEUDAS=rd.data||[];PRESTAMOS=rp.data||[];renderTodo()}
   catch(e){toast('Error: '+e.message)}
   spin(false)
 }
@@ -635,9 +743,14 @@ function cargarDemo(){
   DEUDAS=[{id:'d1',nombre:'Préstamo Juan',monto_total:500,monto_pagado:200,fecha_vencimiento:'2026-05-15',pagado:false,etiqueta:'Hogar'},{id:'d2',nombre:'Tarjeta crédito',monto_total:720,monto_pagado:0,fecha_vencimiento:'2026-05-03',pagado:false,etiqueta:'Camila'},{id:'d3',nombre:'Deuda personal',monto_total:300,monto_pagado:300,fecha_vencimiento:'2026-04-01',pagado:true,etiqueta:'Maria'}];
   MOVS.push({id:'abono1',fecha:'2026-04-15',descripcion:'Abono deuda d1',monto:100,tipo:'gasto',etiqueta:'Hogar',banco_id:'b1',banco_destino_id:null,incluye_impuesto:false,deuda_id:'d1'});
   MOVS.push({id:'abono2',fecha:'2026-04-22',descripcion:'Abono deuda d1',monto:100,tipo:'gasto',etiqueta:'Hogar',banco_id:'b2',banco_destino_id:null,incluye_impuesto:false,deuda_id:'d1'});
+  PRESTAMOS=[
+    {id:'p1',persona:'Camila',monto:150,monto_recibido:0,fecha_prestamo:'2026-04-10',fecha_devolucion:'2026-05-20',descripcion:'Para compras',nota:'',cobrado:false},
+    {id:'p2',persona:'Victoria',monto:80,monto_recibido:80,fecha_prestamo:'2026-03-15',fecha_devolucion:'2026-04-15',descripcion:'Préstamo personal',nota:'',cobrado:true},
+    {id:'p3',persona:'Rous',monto:300,monto_recibido:100,fecha_prestamo:'2026-04-01',fecha_devolucion:'2026-05-30',descripcion:'Viaje',nota:'Devuelve en 3 cuotas',cobrado:false}
+  ];
   renderTodo()
 }
-function renderTodo(){renderDash();renderBancoFilterChips();renderEtiquetaFilterChips();applyFilters();renderDeudas();renderBankBtns();renderTrfBanks();renderBankCfg();renderEtiquetaPills()}
+function renderTodo(){renderDash();renderBancoFilterChips();renderEtiquetaFilterChips();applyFilters();renderDeudas();renderCobrar();renderBankBtns();renderTrfBanks();renderBankCfg();renderEtiquetaPills();renderPrestPersonaChips()}
 
 function getDashRango(){
   const desde=document.getElementById('dash-desde')?.value||H30;
@@ -675,6 +788,10 @@ function renderDash(){
   document.getElementById('stat-gas-sub').textContent=labelRango;
   document.getElementById('stat-deu').textContent=fmtS(total_deu);
   document.getElementById('stat-deu-sub').textContent=activas.length+' en rango · '+activasFuturas.length+' próximas';
+  // Cuentas por cobrar en dashboard
+  const prestActivos=PRESTAMOS.filter(p=>!p.cobrado&&p.monto_recibido<p.monto);
+  const totalCobrar=prestActivos.reduce((s,p)=>s+(p.monto-p.monto_recibido),0);
+  const proxCobros=prestActivos.filter(p=>p.fecha_devolucion&&p.fecha_devolucion>=HOY).sort((a,b)=>a.fecha_devolucion.localeCompare(b.fecha_devolucion));
   document.getElementById('stat-net').textContent=(net30<0?'−':'')+fmtS(Math.abs(net30));
   document.getElementById('stat-net-sub').textContent=(net30>=0?'positivo':'negativo')+' · '+labelRango;
 
@@ -772,10 +889,12 @@ function renderAlertas(){
   if(enRangoF.length){html+=`<div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;padding-left:2px">En este rango</div>`;html+=`<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">${enRangoF.map(d=>buildCard(d,'rango')).join('')}</div>`;}
   if(futurasF.length){html+=`<div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--blue-text);margin-bottom:8px;padding-left:2px">📅 Cronograma futuro</div>`;html+=`<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">${futurasF.map(d=>buildCard(d,'futura')).join('')}</div>`;}
   if(saldadasF.length){html+=`<div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--green-text);margin-bottom:8px;padding-left:2px">✓ Saldadas en este rango</div>`;html+=`<div style="display:flex;flex-direction:column;gap:8px">${saldadasF.map(d=>buildCard(d,'saldada')).join('')}</div>`;}
-  cont.innerHTML=html
+  cont.innerHTML=html;
+  renderDashCobrar();
 }
 
 function setDashEtiq(etiq){window._dashEtiqFiltro=etiq;renderAlertas()}
+function renderDashCobrar(){const hoy=new Date();const activos=PRESTAMOS.filter(p=>!p.cobrado&&p.monto_recibido<p.monto).sort((a,b)=>(a.fecha_devolucion||'9999').localeCompare(b.fecha_devolucion||'9999'));const cont=document.getElementById('dash-cobrar-list');if(!activos.length){cont.innerHTML='<div class="empty" style="padding:10px 0;font-size:13px">Sin cuentas por cobrar activas</div>';return}const totalCobrar=activos.reduce((s,p)=>s+(p.monto-p.monto_recibido),0);cont.innerHTML=`<div style="margin-bottom:10px;padding:10px 14px;background:var(--blue-bg);border-radius:var(--r);border:1.5px solid rgba(24,95,165,.2);display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;font-weight:700;color:var(--blue-text)">Total pendiente</span><span style="font-family:'DM Mono',monospace;font-size:15px;font-weight:700;color:var(--blue)">$${fmt(totalCobrar)}</span></div>${activos.map(p=>{const pend=p.monto-p.monto_recibido;const venc=p.fecha_devolucion?new Date(p.fecha_devolucion+'T12:00:00'):null;const dias=venc?Math.ceil((venc-hoy)/864e5):999;const vs=venc?venc.toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'}):'Sin fecha';const pct=Math.min(100,Math.round((p.monto_recibido/p.monto)*100));let bBg,bColor,bTxt;if(dias<0){bBg='var(--red-bg)';bColor='var(--red-text)';bTxt='⚠ Vencido'}else if(dias<=3){bBg='var(--red-bg)';bColor='var(--red-text)';bTxt='🔴 Urgente'}else if(dias<=7){bBg='var(--amber-bg)';bColor='var(--amber-text)';bTxt='🟡 Esta semana'}else{bBg='var(--blue-bg)';bColor='var(--blue-text)';bTxt='📅 '+vs}return`<div style="border-radius:12px;border:1.5px solid rgba(24,95,165,.2);background:var(--bg);overflow:hidden;margin-bottom:8px;cursor:pointer" onclick="abrirCobro('${p.id}',null)"><div style="padding:12px 14px;display:flex;gap:10px;align-items:flex-start"><div style="width:32px;height:32px;border-radius:10px;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">👤</div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--text)">${p.persona} <span style="font-size:12px;font-weight:500;color:var(--text3)">· ${p.descripcion||''}</span></div><div style="display:flex;gap:8px;align-items:center;margin-top:5px;flex-wrap:wrap"><span style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:var(--blue)">$${fmt(pend)}</span><span style="font-size:11px;color:var(--text3)">de $${fmt(p.monto)}</span><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:${bBg};color:${bColor}">${bTxt}</span></div></div></div>${pct>0?`<div style="height:3px;background:var(--border)"><div style="height:3px;background:var(--blue);width:${pct}%"></div></div>`:''}<div style="padding:7px 14px;border-top:1px solid var(--border);background:var(--bg2);font-size:12px;font-weight:700;color:var(--blue-text)">💰 Toca para registrar cobro</div></div>`}).join('')}`}
 function setSubtab(tab,btn){document.querySelectorAll('.subtab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.subtab-content').forEach(c=>c.classList.remove('active'));btn.classList.add('active');document.getElementById('sub-'+tab).classList.add('active')}
 
 function renderBancoFilterChips(){const cont=document.getElementById('banco-filter-chips');if(!cont)return;const activo=fBanco;let html=`<button class="fchip ${activo==='todos'?'active':''}" onclick="setFilter('banco','todos',this)">Todos</button>`;BANCOS.forEach(b=>{html+=`<button class="fchip ${activo===b.id?'active':''}" onclick="setFilter('banco','${b.id}',this)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${b.color};margin-right:5px"></span>${b.nombre}</button>`});cont.innerHTML=html}
@@ -970,6 +1089,7 @@ async function guardarMovimiento(){
   if(!selBancoId){toast('⚠ Selecciona un banco');return}
   const mov={descripcion:desc,monto,tipo:curTipo,etiqueta:selEtiqueta,banco_id:selBancoId,banco_destino_id:null,incluye_impuesto:impuesto,fecha};
   if(!db){MOVS.unshift({...mov,id:'local_'+Date.now()})}else{spin(true);const{error}=await db.from('movimientos').insert(mov);if(error){toast('Error: '+error.message);spin(false);return}const{data}=await db.from('movimientos').select('*').order('fecha',{ascending:false});MOVS=data||[];spin(false)}
+  const newId=db?null:'local_'+Date.now();await guardarPrestamoSiAplica(newId,monto,fecha,desc);
   renderTodo();resetForm();toast('✓ Movimiento guardado');goScreen('dash',document.getElementById('nav-dash'))
 }
 
@@ -980,9 +1100,9 @@ function renderBankCfg(){const def=['#E24B4A','#378ADD','#3B6D11','#EF9F27','#53
 async function guardarBancos(){const bancos=Array.from({length:5},(_,i)=>({id:document.getElementById(`bc-id-${i}`).value||undefined,nombre:document.getElementById(`bc-n-${i}`).value.trim(),color:document.getElementById(`bc-c-${i}`).value,saldo:parseFloat(document.getElementById(`bc-s-${i}`).value)||0})).filter(b=>b.nombre);if(!db){BANCOS=bancos.map((b,i)=>({...b,id:b.id||'b'+(i+1)}));renderTodo();toast('✓ Bancos guardados (demo)');goScreen('dash',document.getElementById('nav-dash'));return}spin(true);for(const b of bancos){if(b.id)await db.from('bancos').update({nombre:b.nombre,color:b.color,saldo:b.saldo}).eq('id',b.id);else await db.from('bancos').insert({nombre:b.nombre,color:b.color,saldo:b.saldo})}await cargarTodo();toast('✓ Bancos guardados');goScreen('dash',document.getElementById('nav-dash'));spin(false)}
 
 function goScreen(name,btn){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+name).classList.add('active');document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active')}
-function setTipo(t){curTipo=t;document.querySelectorAll('.rtbtn').forEach(b=>b.classList.remove('on'));const map={ingreso:'btn-ing',gasto:'btn-gas',deuda:'btn-deu',transferencia:'btn-trf'};if(map[t])document.getElementById(map[t]).classList.add('on');const isTrf=t==='transferencia';const isDeu=t==='deuda';document.getElementById('form-normal').style.display=isTrf?'none':'';document.getElementById('form-transferencia').style.display=isTrf?'':'none';if(!isTrf){document.getElementById('banco-field').style.display=isDeu?'none':'';document.getElementById('venc-field').style.display=isDeu?'':'none';document.getElementById('tax-row').style.display=isDeu?'none':'';document.getElementById('recurrente-field').style.display=isDeu?'flex':'none'};renderEtiquetaPills()}
+function setTipo(t){curTipo=t;document.querySelectorAll('.rtbtn').forEach(b=>b.classList.remove('on'));const map={ingreso:'btn-ing',gasto:'btn-gas',deuda:'btn-deu',transferencia:'btn-trf'};if(map[t])document.getElementById(map[t]).classList.add('on');const isTrf=t==='transferencia';const isDeu=t==='deuda';document.getElementById('form-normal').style.display=isTrf?'none':'';document.getElementById('form-transferencia').style.display=isTrf?'':'none';if(!isTrf){document.getElementById('banco-field').style.display=isDeu?'none':'';document.getElementById('venc-field').style.display=isDeu?'':'none';document.getElementById('tax-row').style.display=isDeu?'none':'';document.getElementById('recurrente-field').style.display=isDeu?'flex':'none';const esGasto=t==='gasto';document.getElementById('prestado-toggle-row').style.display=esGasto?'flex':'none';if(!esGasto){document.getElementById('prestado-sw').classList.remove('on');document.getElementById('prestado-fields').style.display='none'}};renderEtiquetaPills()}
 
-['modal-pago','modal-historial','modal-editar-mov','modal-editar-deuda'].forEach(id=>{document.getElementById(id).addEventListener('click',function(e){if(e.target===this)cerrarModal(id)})});
+['modal-pago','modal-historial','modal-editar-mov','modal-editar-deuda','modal-cobro','modal-editar-prestamo'].forEach(id=>{document.getElementById(id).addEventListener('click',function(e){if(e.target===this)cerrarModal(id)})});
 
 document.getElementById('dash-desde').value=H30;
 document.getElementById('dash-hasta').value=HOY;  
@@ -1126,6 +1246,192 @@ async function guardarEdicionDeuda(){
   cerrarModal('modal-editar-deuda');
   renderTodo();
   toast('✓ Deuda actualizada');
+}
+
+/* ══════════════════════════════════════
+   CUENTAS POR COBRAR / PRÉSTAMOS
+══════════════════════════════════════ */
+let prestFiltroEstado='activos', prestFiltroPersona='todas';
+let selPrestPersona='Camila', editPrestId=null, cobroActivoId=null;
+let selCobroBancoId=null;
+
+function setPrestFilter(grp,val,btn){
+  if(grp==='estado')prestFiltroEstado=val;
+  else prestFiltroPersona=val;
+  btn.closest('.frow').querySelectorAll('.fchip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  renderCobrar();
+}
+
+function renderPrestPersonaChips(){
+  const cont=document.getElementById('prest-persona-chips');
+  if(!cont)return;
+  let html=`<button class="fchip ${prestFiltroPersona==='todas'?'active':''}" onclick="setPrestFilter('persona','todas',this)">Todas</button>`;
+  PRESTADOS_PERSONAS.forEach(p=>{
+    html+=`<button class="fchip ${prestFiltroPersona===p?'active':''}" onclick="setPrestFilter('persona','${p}',this)">${p}</button>`;
+  });
+  cont.innerHTML=html;
+}
+
+function renderCobrar(){
+  let lista=[...PRESTAMOS];
+  if(prestFiltroEstado==='activos')lista=lista.filter(p=>!p.cobrado&&p.monto_recibido<p.monto);
+  if(prestFiltroPersona!=='todas')lista=lista.filter(p=>p.persona===prestFiltroPersona);
+  lista.sort((a,b)=>(a.fecha_devolucion||'9999').localeCompare(b.fecha_devolucion||'9999'));
+
+  const totalPend=lista.filter(p=>!p.cobrado).reduce((s,p)=>s+(p.monto-(p.monto_recibido||0)),0);
+  document.getElementById('cobrar-total-lbl').textContent='$'+fmt(totalPend);
+
+  if(!lista.length){document.getElementById('cobrar-list').innerHTML='<div class="empty">Sin préstamos para este filtro</div>';return}
+
+  const hoy=new Date();
+  document.getElementById('cobrar-list').innerHTML=lista.map(p=>{
+    const pend=p.monto-(p.monto_recibido||0);
+    const pct=Math.min(100,Math.round(((p.monto_recibido||0)/p.monto)*100));
+    const venc=p.fecha_devolucion?new Date(p.fecha_devolucion+'T12:00:00'):null;
+    const dias=venc?Math.ceil((venc-hoy)/864e5):999;
+    const vs=venc?venc.toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric'}):'Sin fecha';
+    const cobrado=p.cobrado||pend<=0;
+    let type=cobrado?'ok':dias<0?'danger':dias<=3?'danger':dias<=7?'warn':'ok';
+    let bdg=cobrado?'✓ Cobrado':dias<0?'Vencido':dias<=3?'Urgente':dias<=7?'Esta semana':'Pendiente';
+    const borderColor=cobrado?'rgba(59,109,17,.2)':dias<=3?'rgba(163,45,45,.25)':dias<=7?'rgba(146,94,8,.2)':'rgba(24,95,165,.2)';
+    const badgeCls=cobrado?'badge-ok':type==='danger'?'badge-danger':type==='warn'?'badge-warn':'badge-ok';
+    return`<div style="margin:0 16px 10px;border-radius:var(--r);border:1.5px solid ${borderColor};background:var(--bg);overflow:hidden">
+      <div style="padding:12px 14px;display:flex;gap:10px;align-items:flex-start">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">👤</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:2px">${p.persona}</div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:6px">${p.descripcion||'Préstamo'} · Devuelve: ${vs}${p.nota?' · <em>'+p.nota+'</em>':''}</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span style="font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:${cobrado?'var(--green)':'var(--blue)'}">$${fmt(cobrado?p.monto:pend)}</span>
+            <span style="font-size:11px;color:var(--text3)">de $${fmt(p.monto)}</span>
+            <span class="ac-badge ${badgeCls}">${bdg}</span>
+          </div>
+        </div>
+      </div>
+      ${pct>0?`<div style="height:3px;background:var(--border)"><div style="height:3px;background:${cobrado?'var(--green)':'var(--blue)'};width:${pct}%;transition:width .3s"></div></div>`:''}
+      <div style="padding:8px 14px;border-top:1px solid var(--border);display:flex;gap:6px;background:var(--bg2)">
+        ${!cobrado?`<button class="d-pay-btn" style="color:var(--blue);border-color:var(--blue)" onclick="abrirCobro('${p.id}',event)">💰 Cobrar</button>`:''}
+        <button class="d-hist-btn" onclick="abrirEditarPrestamo('${p.id}',event)">✏️ Editar</button>
+        <button class="d-del-btn" onclick="eliminarPrestamo('${p.id}',event)">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── Prestado toggle en form ── */
+function togglePrestado(){
+  const sw=document.getElementById('prestado-sw');
+  sw.classList.toggle('on');
+  document.getElementById('prestado-fields').style.display=sw.classList.contains('on')?'flex':'none';
+}
+document.getElementById('prestado-persona-pills').addEventListener('click',function(e){
+  const btn=e.target.closest('.pill');if(!btn)return;
+  document.querySelectorAll('#prestado-persona-pills .pill').forEach(x=>x.classList.remove('sel'));
+  btn.classList.add('sel');selPrestPersona=btn.dataset.persona;
+});
+
+/* ── Guardar préstamo al guardar gasto ── */
+async function guardarPrestamoSiAplica(movId,monto,fecha,desc){
+  const esPrestado=document.getElementById('prestado-sw').classList.contains('on');
+  if(!esPrestado)return;
+  const devolucion=document.getElementById('inp-devolucion').value||null;
+  const nota=document.getElementById('inp-prest-nota').value.trim();
+  const nuevo={id:'pl_'+Date.now(),persona:selPrestPersona,monto,monto_recibido:0,fecha_prestamo:fecha,fecha_devolucion:devolucion,descripcion:desc,nota,cobrado:false,mov_id:movId};
+  if(!db){PRESTAMOS.push(nuevo)}
+  else{await db.from('prestamos').insert({persona:selPrestPersona,monto,monto_recibido:0,fecha_prestamo:fecha,fecha_devolucion:devolucion,descripcion:desc,nota,cobrado:false})}
+  document.getElementById('prestado-sw').classList.remove('on');
+  document.getElementById('prestado-fields').style.display='none';
+  document.getElementById('inp-devolucion').value='';
+  document.getElementById('inp-prest-nota').value='';
+}
+
+/* ── Modal cobro ── */
+function abrirCobro(prestId,e){
+  if(e)e.stopPropagation();
+  cobroActivoId=prestId;
+  const p=PRESTAMOS.find(x=>x.id===prestId);if(!p)return;
+  const pend=p.monto-(p.monto_recibido||0);
+  document.getElementById('cobro-nombre').textContent='Cobrar: '+p.persona;
+  document.getElementById('cobro-sub').textContent=`Pendiente: $${fmt(pend)} de $${fmt(p.monto)}`;
+  document.getElementById('cobro-monto').value='';
+  document.getElementById('cobro-fecha').value=HOY;
+  const sr=saldosReales();
+  selCobroBancoId=sr[0]?.id||null;
+  document.getElementById('cobro-bank-list').innerHTML=sr.map((b,i)=>`<button class="bsbtn ${i===0?'sel':''}" onclick="selCobroBanco('${b.id}',this)"><div class="bcolor" style="background:${b.color}"></div>${b.nombre}<span style="margin-left:auto;font-family:'DM Mono';font-size:12px;color:var(--text3);font-weight:600">$${fmt(b.saldo_real)}</span></button>`).join('');
+  document.getElementById('modal-cobro').classList.add('open');
+}
+function selCobroBanco(id,btn){selCobroBancoId=id;document.querySelectorAll('#cobro-bank-list .bsbtn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel')}
+
+async function confirmarCobro(){
+  const monto=parseFloat(document.getElementById('cobro-monto').value);
+  const fecha=document.getElementById('cobro-fecha').value||HOY;
+  if(!monto||monto<=0){toast('⚠ Ingresá un monto');return}
+  if(!selCobroBancoId){toast('⚠ Seleccioná un banco');return}
+  const p=PRESTAMOS.find(x=>x.id===cobroActivoId);if(!p)return;
+  const pend=p.monto-(p.monto_recibido||0);
+  const cobrado=Math.min(monto,pend);
+  const nuevoRecibido=(p.monto_recibido||0)+cobrado;
+  const totalCobrado=nuevoRecibido>=p.monto;
+  // Registrar como ingreso
+  const mov={descripcion:'Cobro préstamo: '+p.persona,monto:cobrado,tipo:'ingreso',etiqueta:'Otros',banco_id:selCobroBancoId,banco_destino_id:null,incluye_impuesto:false,fecha};
+  if(!db){
+    p.monto_recibido=nuevoRecibido;if(totalCobrado)p.cobrado=true;
+    MOVS.unshift({...mov,id:'cob_'+Date.now()});
+  } else {
+    spin(true);
+    await db.from('prestamos').update({monto_recibido:nuevoRecibido,cobrado:totalCobrado}).eq('id',cobroActivoId);
+    await db.from('movimientos').insert(mov);
+    const[rm,rp]=await Promise.all([db.from('movimientos').select('*').order('fecha',{ascending:false}),db.from('prestamos').select('*').order('creado_en',{ascending:false})]);
+    MOVS=rm.data||[];PRESTAMOS=rp.data||[];
+    spin(false);
+  }
+  cerrarModal('modal-cobro');
+  renderTodo();
+  toast(totalCobrado?'✓ Préstamo cobrado 🎉':`✓ Cobro de $${fmt(cobrado)} registrado`);
+}
+
+/* ── Modal editar préstamo ── */
+let editPrestPersona='Camila';
+function abrirEditarPrestamo(id,e){
+  if(e)e.stopPropagation();
+  editPrestId=id;
+  const p=PRESTAMOS.find(x=>x.id===id);if(!p)return;
+  document.getElementById('edit-prest-persona-val').textContent=p.persona;
+  document.getElementById('edit-prest-monto').value=p.monto;
+  document.getElementById('edit-prest-devolucion').value=p.fecha_devolucion||'';
+  document.getElementById('edit-prest-desc').value=p.descripcion||'';
+  document.getElementById('edit-prest-nota').value=p.nota||'';
+  editPrestPersona=p.persona;
+  document.querySelectorAll('#edit-prest-persona-pills .pill').forEach(btn=>{
+    btn.classList.toggle('sel',btn.dataset.persona===p.persona);
+  });
+  document.getElementById('modal-editar-prestamo').classList.add('open');
+}
+document.addEventListener('click',function(e){
+  const btn=e.target.closest('#edit-prest-persona-pills .pill');
+  if(!btn)return;
+  document.querySelectorAll('#edit-prest-persona-pills .pill').forEach(x=>x.classList.remove('sel'));
+  btn.classList.add('sel');editPrestPersona=btn.dataset.persona;
+});
+async function guardarEdicionPrestamo(){
+  const id=editPrestId;
+  const monto=parseFloat(document.getElementById('edit-prest-monto').value);
+  const devolucion=document.getElementById('edit-prest-devolucion').value||null;
+  const desc=document.getElementById('edit-prest-desc').value.trim();
+  const nota=document.getElementById('edit-prest-nota').value.trim();
+  if(isNaN(monto)||monto<=0){toast('⚠ Monto inválido');return}
+  const update={persona:editPrestPersona,monto,fecha_devolucion:devolucion,descripcion:desc,nota};
+  if(!db){const p=PRESTAMOS.find(x=>x.id===id);if(p)Object.assign(p,update);}
+  else{spin(true);await db.from('prestamos').update(update).eq('id',id);const{data}=await db.from('prestamos').select('*').order('creado_en',{ascending:false});PRESTAMOS=data||[];spin(false);}
+  cerrarModal('modal-editar-prestamo');renderTodo();toast('✓ Préstamo actualizado');
+}
+async function eliminarPrestamo(id,e){
+  if(e)e.stopPropagation();
+  if(!confirm('¿Eliminar este préstamo?'))return;
+  if(!db){PRESTAMOS=PRESTAMOS.filter(p=>p.id!==id);}
+  else{spin(true);await db.from('prestamos').delete().eq('id',id);const{data}=await db.from('prestamos').select('*').order('creado_en',{ascending:false});PRESTAMOS=data||[];spin(false);}
+  renderTodo();toast('✓ Eliminado');
 }
 </script>
 </body>
