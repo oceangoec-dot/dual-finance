@@ -1312,6 +1312,16 @@ function renderAhoBankBtns(){
 }
 function selAhoFormBanco(id,btn){selAhoFormBancoId=id;document.querySelectorAll('#aho-bank-list .bsbtn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel')}
 
+function toggleAhoAfectaBanco(){
+  const monto=parseFloat(document.getElementById('aho-primer-abono').value)||0;
+  const row=document.getElementById('aho-afecta-banco-row');
+  row.style.display=monto>0?'flex':'none';
+}
+function toggleAhoAfectaBancoSw(){
+  const sw=document.getElementById('aho-afecta-sw');
+  sw.classList.toggle('on');
+  document.getElementById('aho-bank-wrap').style.display=sw.classList.contains('on')?'':'none';
+}
 /* Modal abono ahorro */
 function abrirAbonoAho(ahoId,e){
   if(e)e.stopPropagation();
@@ -1440,7 +1450,7 @@ async function guardarMovimiento(){
     renderTodo();document.getElementById('trf-desc').value='';document.getElementById('trf-monto').value='';toast('✓ Transferencia registrada ↔');goScreen('dash',document.getElementById('nav-dash'));return
   }
 
-  // AHORRO NUEVO OBJETIVO
+ // AHORRO NUEVO OBJETIVO
   if(curTipo==='ahorro'){
     const nombre=document.getElementById('aho-nombre').value.trim();
     const meta=parseFloat(document.getElementById('aho-meta').value);
@@ -1448,24 +1458,27 @@ async function guardarMovimiento(){
     const fechaAbono=document.getElementById('aho-fecha-abono').value||HOY;
     const fechaMeta=document.getElementById('aho-fecha-meta').value||null;
     if(!nombre||isNaN(meta)||meta<=0){toast('⚠ Completá nombre y meta');return}
+    const afectaBanco=document.getElementById('aho-afecta-sw')?.classList.contains('on');
     const nuevoAho={nombre,meta,ahorrado:primerAbono,fecha_meta:fechaMeta,emoji:'🐷',completado:primerAbono>=meta};
     if(!db){
       const id='a_'+Date.now();
       AHORROS.push({...nuevoAho,id});
-      if(primerAbono>0&&selAhoFormBancoId){MOVS.unshift({id:'am_'+Date.now(),fecha:fechaAbono,descripcion:'Ahorro: '+nombre,monto:primerAbono,tipo:'ahorro',etiqueta:'Ahorro',banco_id:selAhoFormBancoId,banco_destino_id:null,incluye_impuesto:false,ahorro_id:id})}
+      if(primerAbono>0&&afectaBanco&&selAhoFormBancoId){MOVS.unshift({id:'am_'+Date.now(),fecha:fechaAbono,descripcion:'Ahorro: '+nombre,monto:primerAbono,tipo:'ahorro',etiqueta:'Ahorro',banco_id:selAhoFormBancoId,banco_destino_id:null,incluye_impuesto:false,ahorro_id:id})}
     }else{
       spin(true);
       const{data:aData,error}=await db.from('ahorros').insert(nuevoAho).select().single();
       if(error){toast('Error: '+error.message);spin(false);return}
-      if(primerAbono>0&&selAhoFormBancoId){await db.from('movimientos').insert({fecha:fechaAbono,descripcion:'Ahorro: '+nombre,monto:primerAbono,tipo:'ahorro',etiqueta:'Ahorro',banco_id:selAhoFormBancoId,banco_destino_id:null,incluye_impuesto:false,ahorro_id:aData.id})}
+      if(primerAbono>0&&afectaBanco&&selAhoFormBancoId){await db.from('movimientos').insert({fecha:fechaAbono,descripcion:'Ahorro: '+nombre,monto:primerAbono,tipo:'ahorro',etiqueta:'Ahorro',banco_id:selAhoFormBancoId,banco_destino_id:null,incluye_impuesto:false,ahorro_id:aData.id})}
       const[rm,ra]=await Promise.all([db.from('movimientos').select('*').order('fecha',{ascending:false}),db.from('ahorros').select('*').order('creado_en',{ascending:false})]);
       MOVS=rm.data||[];AHORROS=ra.data||[];spin(false);
     }
     renderTodo();
     document.getElementById('aho-nombre').value='';document.getElementById('aho-meta').value='';document.getElementById('aho-primer-abono').value='';document.getElementById('aho-fecha-meta').value='';
+    document.getElementById('aho-afecta-banco-row').style.display='none';
+    document.getElementById('aho-afecta-sw').classList.remove('on');
+    document.getElementById('aho-bank-wrap').style.display='none';
     toast('🐷 ¡Objetivo creado!');goScreen('dash',document.getElementById('nav-dash'));return
   }
-
   const desc=document.getElementById('inp-desc').value.trim();
   const monto=parseFloat(document.getElementById('inp-monto').value);
   const venc=document.getElementById('inp-venc').value;
