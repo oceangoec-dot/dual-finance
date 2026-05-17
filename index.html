@@ -1501,9 +1501,11 @@ async function guardarMovimiento(){
   const mov={descripcion:desc,monto,tipo:curTipo,etiqueta:selEtiqueta,banco_id:selBancoId,banco_destino_id:null,incluye_impuesto:impuesto,fecha};
   if(!db){MOVS.unshift({...mov,id:'local_'+Date.now()})}
   else{spin(true);const{error}=await db.from('movimientos').insert(mov);if(error){toast('Error: '+error.message);spin(false);return}const{data}=await db.from('movimientos').select('*').order('fecha',{ascending:false});MOVS=data||[];spin(false)}
-  const newId=db?null:'local_'+Date.now();
   await guardarPrestamoSiAplica(null,monto,fecha,desc);
-  renderTodo();resetForm();toast('✓ Movimiento guardado');goScreen('dash',document.getElementById('nav-dash'))
+  await cargarTodo();
+  resetForm();
+  toast('✓ Movimiento guardado');
+  goScreen('dash',document.getElementById('nav-dash'));
 }
 
 function resetForm(){document.getElementById('inp-desc').value='';document.getElementById('inp-monto').value='';document.getElementById('inp-venc').value='';document.getElementById('inp-fecha').value=HOY;document.getElementById('tax-sw').classList.remove('on');document.getElementById('recurrente-sw').classList.remove('on');document.getElementById('dia-venc-row').style.display='none';document.getElementById('inp-dia-venc').value=''}
